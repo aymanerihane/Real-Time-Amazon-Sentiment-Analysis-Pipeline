@@ -1,38 +1,50 @@
-FROM python:3.13-slim
+FROM python:3.9-slim
 
+# Set non-root user for security
+RUN groupadd -r collector && useradd -r -g collector collector
+
+# Set working directory
 WORKDIR /app
 
-# # Install system dependencies including curl and gpg
-# RUN apt-get update && apt-get install -y \
-#     wget \
-#     curl \
-#     gnupg \
-#     unzip \
-#     && apt-get clean && rm -rf /var/lib/apt/lists/*
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    gnupg \
+    unzip \
+    chromium \
+    chromium-driver \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# # Variables de version
-# ENV CHROME_VERSION=124.0.6367.91
-# ENV CHROMEDRIVER_VERSION=124.0.6367.91
+# Set environment variables for Chrome
+ENV CHROME_BIN=/usr/bin/chromium
+ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
 
-# # Install Chrome
-# RUN curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-linux-signing-key.gpg \
-#     && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-linux-signing-key.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
-#     && apt-get update \
-#     && apt-get install -y google-chrome-stable \
-#     && rm -rf /var/lib/apt/lists/*
-
-# # Install ChromeDriver (version fixe)
-# RUN wget -q "https://storage.googleapis.com/chrome-for-testing-public/136.0.7103.49/linux64/chromedriver-linux64.zip" \
-#     && unzip chromedriver_linux64.zip -d /usr/local/bin \
-#     && rm chromedriver_linux64.zip \
-#     && chmod +x /usr/local/bin/chromedriver
+# Copy requirements file first to leverage Docker cache
+COPY requirements.txt .
 
 # Install Python dependencies
-COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application code
-COPY . .
+# Copy the script
+COPY amazon_review_collector.py .
 
-# Run the collector service
-CMD ["python", "main.py"]
+# Make script executable
+RUN chmod +x amazon_review_collector.py && \
+    chown -R collector:collector /app
+
+# Set environment variables for production
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Switch to non-root user
+USER collector
+
+# Health check to verify the Python process is running
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD ["python", "health_check.py"]
+  
+
+# Use ENTRYPOINT with CMD for better container orchestration
+ENTRYPOINT ["python"]
+CMD ["./amazon_review_collector.py"]
