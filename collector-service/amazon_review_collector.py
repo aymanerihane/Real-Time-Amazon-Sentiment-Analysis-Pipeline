@@ -59,7 +59,8 @@ def setup_kafka_producer():
 def extract_reviews(driver, product_id, max_pages=5):
     """Extract reviews from Amazon product page"""
     reviews = []
-    base_url = f"https://www.amazon.com/product-reviews/{product_id}/ref=cm_cr_arp_d_viewopt_srt?sortBy=recent&pageNumber="
+    # base_url = f"https://www.amazon.com/product-reviews/{product_id}/ref=cm_cr_arp_d_viewopt_srt?sortBy=recent&pageNumber="
+    base_url = f"https://www.amazon.com/product-reviews/B095CLQ1PT/ref=cm_cr_arp_d_viewopt_srt?sortBy=recent&pageNumber="
     
     for page_num in range(1, max_pages + 1):
         url = f"{base_url}{page_num}"
@@ -122,6 +123,24 @@ def send_reviews_to_kafka(producer, reviews):
     producer.flush()
     logger.info(f"Successfully sent {len(reviews)} reviews to Kafka")
 
+    
+def amazon_login(driver, email, password):
+    driver.get("https://www.amazon.com/ap/signin")
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "ap_email")))
+    
+    # Enter email
+    driver.find_element(By.ID, "ap_email").send_keys(email)
+    driver.find_element(By.ID, "continue").click()
+    
+    # Enter password
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "ap_password")))
+    driver.find_element(By.ID, "ap_password").send_keys(password)
+    driver.find_element(By.ID, "signInSubmit").click()
+    
+    # Optional: Wait for successful login
+    time.sleep(5)
+
+
 def scrape_reviews():
     """Main function to scrape reviews and send to Kafka"""
     logger.info("Starting review scraping job")
@@ -132,6 +151,7 @@ def scrape_reviews():
     try:
         driver = setup_selenium()
         producer = setup_kafka_producer()
+        amazon_login(driver, os.getenv('AMAZON_EMAIL'), os.getenv('AMAZON_PASSWORD'))
         
         for product_id in PRODUCT_IDS:
             reviews = extract_reviews(driver, product_id)

@@ -198,9 +198,13 @@ services:
     depends_on:
       - kafka1
       - kafka2
+      - kafka-init
       - mongodb
+      - mongodb-init
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094  #     - KAFKA_TOPIC=amazon-reviews-raw
+      - AMAZON_EMAIL=${AMAZON_EMAIL}
+      - AMAZON_PASSWORD=${AMAZON_PASSWORD}
     volumes:
       - ./collector-service:/app
       - collector_data:/data
