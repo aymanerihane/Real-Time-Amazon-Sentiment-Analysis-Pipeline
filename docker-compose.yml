@@ -171,17 +171,14 @@ services:
     container_name: collector-service
     restart: unless-stopped
     depends_on:
-      kafka1:
-        condition: service_healthy
-      kafka2:
-        condition: service_healthy      
-      mongodb-init:
-        condition: service_healthy
+      - kafka1
+      - kafka2
+      - mongodb
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9093
       - KAFKA_TOPIC=amazon-reviews-raw
     volumes:
-      - ./collector-service:/app
+      # - ./collector-service:/app
       - collector_data:/data
     # networks:
     #   - kafka-net
@@ -229,7 +226,27 @@ services:
   #     - ./web-service:/app
   #     - web_data:/data
 
+  # Frontend Service
+  frontend-service:
+    # Use a development-focused configuration
+    container_name: frontend-service
+    build:
+      context: ./frontend-service
+      dockerfile: Dockerfile.dev  # Use a dev-specific Dockerfile
+    ports:
+      - "5173:5173"  # Vite dev server port
+    volumes:
+      - ./frontend-service:/app  # Mount source code for hot reload
+      - /app/node_modules  # Prevent overriding container node_modules
+    environment:
+      - VITE_DEV_MODE=true
+      - CHOKIDAR_USEPOLLING=true  # Helps with hot reload in Docker
+
+  # Add this to your volumes section at the bottom
+  
+
 volumes:
+  frontend_data:
   kafka1_data:
   kafka2_data:
   mongodb_data:

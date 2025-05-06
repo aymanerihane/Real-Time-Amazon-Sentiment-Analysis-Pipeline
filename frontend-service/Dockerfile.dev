@@ -1,0 +1,21 @@
+# Dockerfile.dev for Vite/React development
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package.json and install dependencies
+COPY package*.json ./
+COPY yarn*.lock ./
+
+# Install dependencies
+RUN npm install
+# OR if using yarn:
+# RUN yarn install
+
+# We'll mount the source code as a volume in docker-compose.override.yml
+# so we don't need to copy it here
+
+EXPOSE 5173
+
+
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
