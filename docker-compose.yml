@@ -263,8 +263,8 @@ services:
     volumes:
       - ./collector-service:/app
       - collector_data:/data
-      - ./data/screenshots:/data/screenshots
-      - ./data/logs:/data/logs
+      - ./collector-service/data/screenshots:/data/screenshots
+      - ./collector-service/data/logs:/data/logs
     networks:
       - kafka-net
     command: >

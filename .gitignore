@@ -1,1 +1,19 @@
 .env
+
+# Data directory
+./collector-service/data/
+
+# Vite/React build and dependencies
+front-service/dist/
+front-service/node_modules/
+front-service/.vite/
+front-service/*.local
+front-service/.DS_Store
+front-service/coverage/
+front-service/.env.local
+front-service/.env.development.local
+front-service/.env.test.local
+front-service/.env.production.local
+front-service/npm-debug.log*
+front-service/yarn-debug.log*
+front-service/yarn-error.log*
