@@ -16,24 +16,26 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
+from pathlib import Path
+
+# Create logs directory if it doesn't exist
+log_dir = Path("/data/logs")
+log_dir.mkdir(parents=True, exist_ok=True)
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_dir / "collector.log"),
+        logging.StreamHandler()  # This will continue logging to console
+    ]
 )
 logger = logging.getLogger(__name__)
 
 # Kafka configuration
 KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka1:9092,kafka2:9093')
 KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'amazon-reviews-raw')
-
-# Amazon product IDs to scrape reviews from
-PRODUCT_IDS = [
-    'B07ZPKN6YR',  # Example product ID - Replace with actual product IDs
-    'B07ZPKBL9H',
-    'B07ZPK5W64'
-]
 
 def setup_selenium():
     """Set up Selenium WebDriver with Chrome (Chromium)"""
@@ -56,11 +58,49 @@ def setup_kafka_producer():
     )
     return producer
 
+def extract_products(driver,max_pages=2):
+    base_url = f"https://www.amazon.fr/gp/bestsellers/electronics?ie=UTF8&pg="
+    product_ids=[]
+    
+    for page_num in range(1, max_pages + 1):
+        url = f"{base_url}{page_num}"
+        logger.info(f"Scraping products from {url}")
+        try:
+            driver.get(url)
+            # Add random delay to avoid detection
+            time.sleep(random.uniform(3, 7))
+            
+            # Wait for products to load
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "p13n-sc-uncoverable-faceout"))
+            )
+            
+            # Parse the page with BeautifulSoup
+            soup = BeautifulSoup(driver.page_source, 'lxml')
+            products = soup.select('div[class="p13n-sc-uncoverable-faceout"]')
+            
+            for product in products:
+                try:
+                    product_id = product.get('id', '')
+                    if product_id:
+                        product_ids.append(product_id)
+                except Exception as e:
+                    logger.error(f"Error parsing product: {str(e)}")
+                    continue
+        except TimeoutException:
+            logger.warning(f"Timeout waiting for page {page_num} to load")
+            continue
+        except Exception as e:
+            logger.error(f"Error scraping page {page_num}: {str(e)}")
+            continue
+    
+    logger.info(f"Extracted {len(product_ids)} product IDs")
+    return product_ids
+
 def extract_reviews(driver, product_id, max_pages=5):
     """Extract reviews from Amazon product page"""
     reviews = []
-    # base_url = f"https://www.amazon.com/product-reviews/{product_id}/ref=cm_cr_arp_d_viewopt_srt?sortBy=recent&pageNumber="
-    base_url = f"https://www.amazon.com/product-reviews/B095CLQ1PT/ref=cm_cr_arp_d_viewopt_srt?sortBy=recent&pageNumber="
+    base_url = f"https://www.amazon.com/product-reviews/{product_id}/ref=cm_cr_arp_d_viewopt_srt?sortBy=recent&pageNumber="
     
     for page_num in range(1, max_pages + 1):
         url = f"{base_url}{page_num}"
@@ -153,7 +193,11 @@ def scrape_reviews():
         producer = setup_kafka_producer()
         amazon_login(driver, os.getenv('AMAZON_EMAIL'), os.getenv('AMAZON_PASSWORD'))
         
-        for product_id in PRODUCT_IDS:
+        # Get product IDs dynamically
+        product_ids = extract_products(driver)
+        logger.info(f"Found {len(product_ids)} products to scrape")
+        
+        for product_id in product_ids:
             reviews = extract_reviews(driver, product_id)
             if reviews:
                 send_reviews_to_kafka(producer, reviews)

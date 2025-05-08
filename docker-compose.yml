@@ -103,9 +103,16 @@ services:
         echo 'Kafka is ready. Creating topics...' &&
         /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka1:9092 --create --topic amazon-reviews-raw --partitions 3 --replication-factor 2 &&
         /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka1:9092 --create --topic sentiment-results --partitions 3 --replication-factor 2 &&
-        echo 'Topics created successfully!'
+        echo 'Topics created successfully!' 
+        # Keep container running to maintain health check
+        # tail -f /dev/null
       "
-    
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list | grep -E 'amazon-reviews-raw|sentiment-results' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # MongoDB for storing processed data
   mongodb:
@@ -122,11 +129,19 @@ services:
       - mongodb_data:/data/db
     networks:
       - kafka-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   # MongoDB initialization
   mongodb-init:
     image: mongo:6.0
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     restart: on-failure
     container_name: mongo-init
     entrypoint: >
@@ -143,10 +158,28 @@ services:
           db.createCollection(\"sentiment_analysis\");
           db.createCollection(\"metrics\");
           print(\"MongoDB collections created.\");
+        ' &&
+        # Verify collections were created
+        mongosh --host mongodb -u root -p example --authenticationDatabase admin --eval '
+          db = db.getSiblingDB(\"amazon_reviews\");
+          collections = db.getCollectionNames();
+          if (collections.includes(\"reviews\") && collections.includes(\"sentiment_analysis\") && collections.includes(\"metrics\")) {
+            print(\"All collections verified.\");
+            exit(0);
+          } else {
+            print(\"Missing collections.\");
+            exit(1);
+          }
         '
       "
     networks:
       - kafka-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--host", "mongodb", "-u", "root", "-p", "example", "--authenticationDatabase", "admin", "--eval", "db = db.getSiblingDB('amazon_reviews'); collections = db.getCollectionNames(); if (collections.includes('reviews') && collections.includes('sentiment_analysis') && collections.includes('metrics')) { exit(0); } else { exit(1); }"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Spark Master
   spark-master:
@@ -196,33 +229,50 @@ services:
     container_name: collector-service
     restart: unless-stopped
     depends_on:
-      - kafka1
-      - kafka2
-      - kafka-init
-      - mongodb
-      - mongodb-init
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      mongodb:
+        condition: service_healthy
+      mongodb-init:
+        condition: service_completed_successfully
     environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094  #     - KAFKA_TOPIC=amazon-reviews-raw
+      - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094
+      - KAFKA_TOPIC=amazon-reviews-raw
       - AMAZON_EMAIL=${AMAZON_EMAIL}
       - AMAZON_PASSWORD=${AMAZON_PASSWORD}
+      - PYTHONUNBUFFERED=1
     volumes:
       - ./collector-service:/app
       - collector_data:/data
     networks:
       - kafka-net
-  # collector-service:
-  #   build: .
-  #   container_name: collector-service
-  #   depends_on:
-  #     - kafka1
-  #     - kafka2
-  #   environment:
-  #     KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9093
-  #     KAFKA_TOPIC: amazon-reviews-raw
-  #   volumes:
-  #     - ./collector-service:/app
-  #     - collector_data:/data
-  #   restart: unless-stopped
+    command: >
+      bash -c "
+        echo 'Waiting for Kafka to be ready...' &&
+        MAX_RETRIES=30
+        RETRY_COUNT=0
+        until /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka1:9092 --list; do
+          echo 'Kafka not ready yet. Sleeping... (Retry $RETRY_COUNT/$MAX_RETRIES)';
+          sleep 5;
+          RETRY_COUNT=$((RETRY_COUNT+1))
+          if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+            echo 'Max retries reached. Exiting...';
+            exit 1;
+          fi
+        done &&
+        echo 'Kafka is ready. Starting collector service...' &&
+        python /app/amazon_review_collector.py
+      "
+    healthcheck:
+      test: ["CMD", "ps", "aux", "|", "grep", "python"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # Trainer Service - processes reviews with Spark Streaming for sentiment analysis
   # trainer-service:

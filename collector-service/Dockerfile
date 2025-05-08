@@ -13,6 +13,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     chromium \
     chromium-driver \
+    && wget -qO - https://packages.confluent.io/deb/7.3/archive.key | apt-key add - \
+    && echo "deb [arch=amd64] https://packages.confluent.io/deb/7.3 stable main" >> /etc/apt/sources.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+    librdkafka-dev \
+    kafkacat \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -28,6 +34,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the script
 COPY amazon_review_collector.py .
+
+# Create data directory for logs
+RUN mkdir -p /data/logs && \
+    chown -R collector:collector /data
 
 # Make script executable
 RUN chmod +x amazon_review_collector.py && \
@@ -45,6 +55,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD ["python", "health_check.py"]
   
 
-# Use ENTRYPOINT with CMD for better container orchestration
-ENTRYPOINT ["python"]
-CMD ["./amazon_review_collector.py"]
+# The command will be specified in docker-compose.yml
+CMD ["python", "./amazon_review_collector.py"]
