@@ -36,9 +36,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the script
 COPY amazon_review_collector.py .
 
-# Create data directory for logs
-RUN mkdir -p /data/logs && \
-    chown -R collector:collector /data
+# Create data directory for logs and set permissions
+RUN mkdir -p /data/logs /data/screenshots && \
+    chown -R collector:collector /data && \
+    chmod -R 755 /data
 
 # Make script executable
 RUN chmod +x amazon_review_collector.py && \
@@ -54,7 +55,6 @@ USER collector
 # Health check to verify the Python process is running
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD ["python", "health_check.py"]
-  
 
 # The command will be specified in docker-compose.yml
 CMD ["python", "./amazon_review_collector.py"]

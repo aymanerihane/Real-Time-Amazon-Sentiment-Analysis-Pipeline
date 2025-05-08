@@ -2,6 +2,9 @@
 
 # Data directory
 ./collector-service/data/
+./collector-service/logs/
+data/
+
 
 # Vite/React build and dependencies
 front-service/dist/

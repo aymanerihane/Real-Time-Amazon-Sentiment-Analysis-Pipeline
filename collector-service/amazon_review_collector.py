@@ -17,23 +17,27 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
+from datetime import datetime
+# MongoDB Connection
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 
-# Create logs directory if it doesn't exist
+# Basic user agents
+USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+]
+
+# Setup logging
 log_dir = Path("/data/logs")
-log_dir.mkdir(parents=True, exist_ok=True)
-log_file = log_dir / "collector.log"
+log_dir.mkdir(parents=True,exist_ok=True)
 
-# Create screenshots directory if it doesn't exist
-screenshot_dir = Path("/data/screenshots")
-screenshot_dir.mkdir(parents=True, exist_ok=True)
-
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler(log_dir / "collector.log"),
-        logging.StreamHandler()  # This will continue logging to console
+        logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
@@ -42,277 +46,230 @@ logger = logging.getLogger(__name__)
 KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka1:9092,kafka2:9093')
 KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'amazon-reviews-raw')
 
-def setup_selenium():
-    """Set up Selenium WebDriver with Chrome (Chromium)"""
+# MongoDB configuration
+MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin')
+MONGODB_DATABASE = os.getenv('MONGODB_DATABASE', 'amazon_reviews')
+MONGODB_COLLECTION = os.getenv('MONGODB_COLLECTION', 'reviews')
+
+def setup_mongodb():
+    """Create and return a MongoDB client instance"""
     try:
-        logger.info("Configuring Chrome options...")
-        chrome_options = Options()
-        
-        # Set Chrome binary location
-        chrome_bin = os.getenv("CHROME_BIN", "/usr/bin/chromium")
-        if not os.path.exists(chrome_bin):
-            chrome_bin = "/usr/bin/google-chrome"  # Fallback to google-chrome
-        chrome_options.binary_location = chrome_bin
-        
-        # Essential options for running in container
-        chrome_options.add_argument('--headless=new')  # Use new headless mode
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        chrome_options.add_argument('--disable-gpu')
-        chrome_options.add_argument('--disable-extensions')
-        chrome_options.add_argument('--disable-infobars')
-        chrome_options.add_argument('--window-size=1920,1080')
-        chrome_options.add_argument('--start-maximized')
-        chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-        chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-        
-        # Add additional options to avoid detection
-        chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
-        chrome_options.add_experimental_option('useAutomationExtension', False)
-        
-        # Create Service object
-        service = Service()
-        
-        logger.info("Initializing Chrome WebDriver...")
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-        driver.set_page_load_timeout(30)
-        
-        # Execute CDP commands to prevent detection
-        driver.execute_cdp_cmd('Network.setUserAgentOverride', {
-            "userAgent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        })
-        driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
-            'source': '''
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                })
-            '''
-        })
-        
-        logger.info("Chrome WebDriver initialized successfully")
-        return driver
-    except Exception as e:
-        logger.error(f"Failed to setup Selenium: {str(e)}")
-        logger.error(f"Error type: {type(e).__name__}")
-        if hasattr(e, '__traceback__'):
-            import traceback
-            logger.error(f"Traceback: {''.join(traceback.format_tb(e.__traceback__))}")
-        raise
+        client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+        # Test the connection
+        client.admin.command('ping')
+        logger.info("Successfully connected to MongoDB")
+        return client
+    except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+        logger.error(f"MongoDB connection error: {str(e)}")
+        return None
+
+def setup_selenium():
+    """Set up Selenium WebDriver with Chrome"""
+    chrome_options = Options()
+    chrome_options.add_argument('--headless=new')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument(f'--user-agent={random.choice(USER_AGENTS)}')
+    
+    service = Service()
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver.set_page_load_timeout(30)
+    return driver
 
 def setup_kafka_producer():
     """Create and return a Kafka producer instance"""
-    producer = KafkaProducer(
+    return KafkaProducer(
         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS.split(','),
         value_serializer=lambda v: json.dumps(v).encode('utf-8'),
         key_serializer=lambda k: k.encode('utf-8') if k else None
     )
-    return producer
 
-def extract_products(driver,max_pages=2):
-    base_url = f"https://www.amazon.fr/gp/bestsellers/electronics?ie=UTF8&pg="
-    product_ids=[]
+def extract_products(driver, max_pages=2,max_products=10):
+    """Extract product URLs from Amazon bestsellers page"""
+    base_url = "https://www.amazon.com/gp/new-releases/kitchen?ie=UTF8&pg="
+    product_urls = []
     
     for page_num in range(1, max_pages + 1):
-        url = f"{base_url}{page_num}"
-        logger.info(f"Scraping products from {url}")
         try:
+            url = f"{base_url}{page_num}"
+            logger.info(f"Scraping products from {url}")
             driver.get(url)
-            # Add random delay to avoid detection
-            time.sleep(random.uniform(3, 7))
+            time.sleep(random.uniform(2, 4))
             
             # Wait for products to load
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CLASS_NAME, "p13n-sc-uncoverable-faceout"))
             )
             
-            # Parse the page with BeautifulSoup
             soup = BeautifulSoup(driver.page_source, 'lxml')
             products = soup.select('div[class="p13n-sc-uncoverable-faceout"]')
             
             for product in products:
-                try:
-                    product_id = product.get('id', '')
-                    if product_id:
-                        product_ids.append(product_id)
-                except Exception as e:
-                    logger.error(f"Error parsing product: {str(e)}")
-                    continue
-        except TimeoutException:
-            logger.warning(f"Timeout waiting for page {page_num} to load")
-            continue
+                product_link = product.select_one('a[href*="/dp/"]')
+                if product_link and 'href' in product_link.attrs:
+                    product_url = product_link['href']
+                    if not product_url.startswith('http'):
+                        product_url = f"https://www.amazon.com{product_url}"
+                    asin = product_url.split('/dp/')[1].split('/')[0]
+                    product_urls.append({
+                        'url': product_url,
+                        'id': asin
+                    })
+            
+            time.sleep(random.uniform(2, 4))
+            
         except Exception as e:
             logger.error(f"Error scraping page {page_num}: {str(e)}")
             continue
     
-    logger.info(f"Extracted {len(product_ids)} product IDs")
-    return product_ids
+    logger.info(f"Extracted {len(product_urls)} product URLs")
+    return product_urls
 
-def extract_reviews(driver, product_id, max_pages=5):
+def extract_reviews(driver, product_info):
     """Extract reviews from Amazon product page"""
     reviews = []
-    base_url = f"https://www.amazon.com/product-reviews/{product_id}/ref=cm_cr_arp_d_viewopt_srt?sortBy=recent&pageNumber="
+    review_elements = []
+    asin = product_info['id']
+    product_url = product_info['url']
+    # Try different selectors for reviews
     
-    for page_num in range(1, max_pages + 1):
-        url = f"{base_url}{page_num}"
-        logger.info(f"Scraping reviews from {url}")
+    try:
         
-        try:
-            driver.get(url)
-            # Add random delay to avoid detection
-            time.sleep(random.uniform(3, 7))
+        logger.info(f"Visiting product page: {product_url}")
+        driver.get(product_url)
+        time.sleep(random.uniform(2, 4))
+        
+        # Wait for reviews to load
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "[data-hook='review']"))
+        )
+
+        
+        soup = BeautifulSoup(driver.page_source, 'lxml')
             
-            # Wait for reviews to load
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.ID, "cm_cr-review_list"))
-            )
+            # Try multiple selectors to handle different Amazon page layouts
+        review_elements = soup.select('div[data-hook="review"]')
             
-            # Parse the page with BeautifulSoup
-            soup = BeautifulSoup(driver.page_source, 'lxml')
-            review_elements = soup.select('div[data-hook="review"]')
+            # If the above selector doesn't find reviews, try alternative selectors
+        if not review_elements:
+            review_elements = soup.select('div[id^="customer_review-"]')
+            logger.warning("reviews geted using div[id^=\"customer_review-\"]")
+        
+        # If still no reviews, try another common pattern
+        if not review_elements:
+            review_elements = soup.select('span[data-hook="cr-widget-FocalReviews"] div[id^="customer_review-"]')
+            logger.warning("reviews geted using span[data-hook=\"cr-widget-FocalReviews\"] div[id^=\"customer_review-\"]")
             
-            for review in review_elements:
-                try:
-                    # Extract review data
-                    review_data = {
-                        'product_id': product_id,
-                        'review_id': review.get('id', ''),
-                        'title': review.select_one('a[data-hook="review-title"]').get_text().strip() if review.select_one('a[data-hook="review-title"]') else '',
-                        'rating': float(review.select_one('i[data-hook="review-star-rating"]').get_text().split(' out of')[0]) if review.select_one('i[data-hook="review-star-rating"]') else 0,
-                        'text': review.select_one('span[data-hook="review-body"]').get_text().strip() if review.select_one('span[data-hook="review-body"]') else '',
-                        'date': review.select_one('span[data-hook="review-date"]').get_text().strip() if review.select_one('span[data-hook="review-date"]') else '',
-                        'verified': bool(review.select_one('span[data-hook="avp-badge"]')),
-                        'scrape_time': datetime.now().isoformat()
-                    }
-                    reviews.append(review_data)
-                except Exception as e:
-                    logger.error(f"Error parsing review: {str(e)}")
-                    continue
-            
-        except TimeoutException:
-            logger.warning(f"Timeout waiting for page {page_num} to load")
-            continue
-        except Exception as e:
-            logger.error(f"Error scraping page {page_num}: {str(e)}")
-            continue
-            
-    logger.info(f"Extracted {len(reviews)} reviews for product {product_id}")
+        if not review_elements:
+            logger.warning(f"No reviews found for product {asin} using any selector pattern")
+
+        
+        
+        for review in review_elements:
+            try:
+                reviewer_name = review.select_one('span[class="a-profile-name"]').get_text().strip()
+                helpful_votes = review.select_one('span[data-hook="helpful-vote-statement"]')
+                review_id_text = review.get('id', '')
+                review_id = review_id_text.split('customer_review-')[-1]
+                helpful = [0, 0]  # Default: 0 people found it helpful out of 0 total votes
+                if helpful_votes:
+                    helpful_text = helpful_votes.get_text().strip()
+                    # Parse English helpful vote text
+                    if 'One person found this helpful' in helpful_text:
+                        helpful = [1, 1]
+                    elif 'people found this helpful' in helpful_text:
+                        total_votes = int(''.join(filter(str.isdigit, helpful_text)))
+                        helpful = [total_votes, total_votes]
+                    elif 'of' in helpful_text and 'found this helpful' in helpful_text:
+                        # Format: "X of Y people found this helpful"
+                        helpful_parts = helpful_text.split('of')
+                        helpful_votes = int(''.join(filter(str.isdigit, helpful_parts[0])))
+                        total_parts = helpful_parts[1].split('people')
+                        total_votes = int(''.join(filter(str.isdigit, total_parts[0])))
+                        helpful = [helpful_votes, total_votes]
+                
+                title = review.select_one('a[data-hook="review-title"]').find_all("span")[-1].get_text().strip()
+                rating_text = review.select_one('i[data-hook="review-star-rating"]').get_text()
+                rating = float(rating_text.split('out of')[0].strip().replace(',', '.'))
+                
+                text = review.select_one('div[data-hook="review-collapsed"]').find_all("span")[0].get_text().strip()
+                date_element = review.select_one('span[data-hook="review-date"]')
+                date_text = date_element.get_text().strip() if date_element else ""
+                date_part = date_text.split("on ")[-1]
+                parsed_date = datetime.strptime(date_part, "%B %d, %Y")
+                date = parsed_date.strftime("%Y-%m-%d")  # Convert to ISO format
+                
+                review_data = {
+                    "reviewer_name" : reviewer_name,
+                    "asin": asin,
+                    "review_id": review_id,
+                    "title": title,
+                    "rating": rating,
+                    "text": text,
+                    "date": date,
+                    "helpful_votes": helpful[0],
+                    "total_votes": helpful[1],
+                    "scrape_time": datetime.now().strftime("%Y-%m-%d %H:%M")
+                }
+                reviews.append(review_data)
+            except Exception as e:
+                logger.error(f"Error parsing review: {str(e)}")
+                continue
+                
+    except Exception as e:
+        logger.error(f"Error processing product {asin}: {str(e)}")
+    
+    logger.info(f"Extracted {len(review_elements)} reviews for product {asin}")
     return reviews
 
 def send_reviews_to_kafka(producer, reviews):
     """Send the extracted reviews to Kafka"""
     for review in reviews:
         try:
-            # Use product_id + review_id as key for proper partitioning
-            key = f"{review['product_id']}_{review['review_id']}"
+            key = f"{review['asin']}_{review['review_id']}"
             producer.send(KAFKA_TOPIC, key=key, value=review)
-            logger.debug(f"Sent review {key} to Kafka")
         except Exception as e:
             logger.error(f"Error sending review to Kafka: {str(e)}")
     
-    # Make sure all messages are sent
     producer.flush()
     logger.info(f"Successfully sent {len(reviews)} reviews to Kafka")
 
+
+def store_reviews_in_mongodb(mongo_client, reviews):
+    """Store the extracted reviews in MongoDB"""
+    if not mongo_client:
+        logger.error("MongoDB client is not available")
+        return
     
-def amazon_login(driver, email, password):
-    """Login to Amazon with retry mechanism"""
-    max_retries = 3
-    retry_count = 0
-    
-    while retry_count < max_retries:
-        try:
-            logger.info(f"Attempting Amazon login (attempt {retry_count + 1}/{max_retries})")
+
+    try:
+        db = mongo_client[MONGODB_DATABASE]
+        collection = db[MONGODB_COLLECTION]
+        
+        # Create unique index on asin and review_id if not exists
+        collection.create_index([("asin", 1), ("review_id", 1)], unique=True)
+        
+        # Insert/update reviews with upsert
+        for review in reviews:
+            filter_query = {
+                "asin": review["asin"],
+                "review_id": review["review_id"],
+                "reviewer_name" : review["reviewer_name"],
+                "title": review["title"],
+                "rating": review["rating"],
+                "text" : review["text"],
+                "date": review["date"],
+                "helpful_votes": review["helpful_votes"],
+                "total_votes": review["total_votes"],
+                "scrape_time": review["scrape_time"]
+            }
+            update_result = collection.update_one(filter_query, {"$set": review}, upsert=True)
             
-            # Go to Amazon homepage first
-            driver.get("https://www.amazon.com")
-            time.sleep(random.uniform(2, 4))
-            
-            # Take screenshot of homepage
-            screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_homepage.png"
-            driver.save_screenshot(screenshot_path)
-            logger.info(f"Saved homepage screenshot to {screenshot_path}")
-            
-            # Click on sign in
-            sign_in_link = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.ID, "nav-link-accountList"))
-            )
-            sign_in_link.click()
-            time.sleep(random.uniform(1, 2))
-            
-            # Take screenshot of sign in page
-            screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_signin_page.png"
-            driver.save_screenshot(screenshot_path)
-            logger.info(f"Saved sign in page screenshot to {screenshot_path}")
-            
-            # Wait for email field and enter email
-            email_field = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.ID, "ap_email_login"))
-            )
-            email_field.clear()
-            for char in email:
-                email_field.send_keys(char)
-                time.sleep(random.uniform(0.1, 0.3))
-            time.sleep(random.uniform(0.5, 1))
-            
-            # Click continue
-            continue_button = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.ID, "continue"))
-            )
-            continue_button.click()
-            time.sleep(random.uniform(1, 2))
-            
-            # Take screenshot after email entry
-            screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_after_email.png"
-            driver.save_screenshot(screenshot_path)
-            logger.info(f"Saved after email screenshot to {screenshot_path}")
-            
-            # Wait for password field and enter password
-            password_field = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.ID, "ap_password"))
-            )
-            password_field.clear()
-            for char in password:
-                password_field.send_keys(char)
-                time.sleep(random.uniform(0.1, 0.3))
-            time.sleep(random.uniform(0.5, 1))
-            
-            # Click sign in
-            sign_in_button = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.ID, "signInSubmit"))
-            )
-            sign_in_button.click()
-            
-            # Wait for successful login
-            time.sleep(5)
-            
-            # Take screenshot after login attempt
-            screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_after_login.png"
-            driver.save_screenshot(screenshot_path)
-            logger.info(f"Saved after login screenshot to {screenshot_path}")
-            
-            # Verify login success
-            if "Hello, Sign in" not in driver.page_source:
-                logger.info("Successfully logged in to Amazon")
-                return True
-            else:
-                logger.warning("Login verification failed")
-                retry_count += 1
-                time.sleep(random.uniform(5, 10))
-                
-        except Exception as e:
-            logger.error(f"Login attempt {retry_count + 1} failed: {str(e)}")
-            # Take screenshot on error
-            try:
-                screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_error.png"
-                driver.save_screenshot(screenshot_path)
-                logger.info(f"Saved error screenshot to {screenshot_path}")
-            except Exception as screenshot_error:
-                logger.error(f"Failed to save error screenshot: {str(screenshot_error)}")
-            
-            retry_count += 1
-            time.sleep(random.uniform(5, 10))
-    
-    raise Exception("Failed to login after maximum retries")
+        logger.info(f"Successfully stored {len(reviews)} reviews in MongoDB")
+    except Exception as e:
+        logger.error(f"Error storing reviews in MongoDB: {str(e)}")
+
 
 def scrape_reviews():
     """Main function to scrape reviews and send to Kafka"""
@@ -322,76 +279,40 @@ def scrape_reviews():
     producer = None
     
     try:
-        logger.info("Setting up Selenium WebDriver...")
         driver = setup_selenium()
-        logger.info("Setting up Kafka producer...")
         producer = setup_kafka_producer()
+        mongo_client = setup_mongodb()
         
-        logger.info("Attempting Amazon login...")
-        try:
-            amazon_login(driver, os.getenv('AMAZON_EMAIL'), os.getenv('AMAZON_PASSWORD'))
-            logger.info("Amazon login successful")
-        except Exception as e:
-            logger.error(f"Failed to login to Amazon: {str(e)}")
-            raise
+        product_urls = extract_products(driver)
+        logger.info(f"Found {len(product_urls)} products to scrape")
         
-        logger.info("Extracting products...")
-        try:
-            product_ids = extract_products(driver)
-            logger.info(f"Found {len(product_ids)} products to scrape")
-        except Exception as e:
-            logger.error(f"Failed to extract products: {str(e)}")
-            raise
-        
-        for product_id in product_ids:
-            try:
-                logger.info(f"Processing product {product_id}")
-                reviews = extract_reviews(driver, product_id)
-                if reviews:
-                    send_reviews_to_kafka(producer, reviews)
-                else:
-                    logger.warning(f"No reviews found for product {product_id}")
-            except Exception as e:
-                logger.error(f"Error processing product {product_id}: {str(e)}")
-                continue
-            
-            # Add random delay between products
-            time.sleep(random.uniform(5, 15))
+        for product_info in product_urls:
+            reviews = extract_reviews(driver, product_info)
+            if reviews:
+                # Send to Kafka
+                send_reviews_to_kafka(producer, reviews)
+                
+                # Store in MongoDB
+                store_reviews_in_mongodb(mongo_client, reviews)
+
+            time.sleep(random.uniform(2, 4))
             
     except Exception as e:
         logger.error(f"Error in scrape_reviews: {str(e)}")
-        logger.error(f"Error type: {type(e).__name__}")
-        logger.error(f"Error details: {str(e)}")
-        if hasattr(e, '__traceback__'):
-            import traceback
-            logger.error(f"Traceback: {''.join(traceback.format_tb(e.__traceback__))}")
     finally:
         if driver:
-            try:
-                driver.quit()
-                logger.info("WebDriver closed successfully")
-            except Exception as e:
-                logger.error(f"Error closing WebDriver: {str(e)}")
+            driver.quit()
         if producer:
-            try:
-                producer.close()
-                logger.info("Kafka producer closed successfully")
-            except Exception as e:
-                logger.error(f"Error closing Kafka producer: {str(e)}")
+            producer.close()
             
     logger.info("Completed review scraping job")
 
 def main():
     """Main entry point for the collector service"""
     logger.info("Amazon Review Collector Service starting...")
-    
-    # Run immediately at startup
     scrape_reviews()
-    
-    # Schedule to run every 6 hours
     schedule.every(6).hours.do(scrape_reviews)
     
-    # Keep the script running
     while True:
         schedule.run_pending()
         time.sleep(60)
