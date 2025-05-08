@@ -214,7 +214,7 @@ def amazon_login(driver, email, password):
             time.sleep(random.uniform(2, 4))
             
             # Take screenshot of homepage
-            screenshot_path = f"/data/logs/amazon_login_attempt_{retry_count + 1}_homepage.png"
+            screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_homepage.png"
             driver.save_screenshot(screenshot_path)
             logger.info(f"Saved homepage screenshot to {screenshot_path}")
             
@@ -226,7 +226,7 @@ def amazon_login(driver, email, password):
             time.sleep(random.uniform(1, 2))
             
             # Take screenshot of sign in page
-            screenshot_path = f"/data/logs/amazon_login_attempt_{retry_count + 1}_signin_page.png"
+            screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_signin_page.png"
             driver.save_screenshot(screenshot_path)
             logger.info(f"Saved sign in page screenshot to {screenshot_path}")
             
@@ -248,7 +248,7 @@ def amazon_login(driver, email, password):
             time.sleep(random.uniform(1, 2))
             
             # Take screenshot after email entry
-            screenshot_path = f"/data/logs/amazon_login_attempt_{retry_count + 1}_after_email.png"
+            screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_after_email.png"
             driver.save_screenshot(screenshot_path)
             logger.info(f"Saved after email screenshot to {screenshot_path}")
             
@@ -272,7 +272,7 @@ def amazon_login(driver, email, password):
             time.sleep(5)
             
             # Take screenshot after login attempt
-            screenshot_path = f"/data/logs/amazon_login_attempt_{retry_count + 1}_after_login.png"
+            screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_after_login.png"
             driver.save_screenshot(screenshot_path)
             logger.info(f"Saved after login screenshot to {screenshot_path}")
             
@@ -289,7 +289,7 @@ def amazon_login(driver, email, password):
             logger.error(f"Login attempt {retry_count + 1} failed: {str(e)}")
             # Take screenshot on error
             try:
-                screenshot_path = f"/data/logs/amazon_login_attempt_{retry_count + 1}_error.png"
+                screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_error.png"
                 driver.save_screenshot(screenshot_path)
                 logger.info(f"Saved error screenshot to {screenshot_path}")
             except Exception as screenshot_error:
