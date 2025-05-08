@@ -1,0 +1,422 @@
+2025-05-08 19:20:14,190 - INFO - Amazon Review Collector Service starting...
+2025-05-08 19:20:14,190 - INFO - Starting review scraping job
+2025-05-08 19:20:15,652 - INFO - <BrokerConnection node_id=bootstrap-0 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.4', 9092)]>: connecting to kafka1:9092 [('172.18.0.4', 9092) IPv4]
+2025-05-08 19:20:15,653 - INFO - Probing node bootstrap-0 broker version
+2025-05-08 19:20:15,654 - INFO - <BrokerConnection node_id=bootstrap-0 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.4', 9092)]>: Connection complete.
+2025-05-08 19:20:15,763 - INFO - Broker version identified as 2.5.0
+2025-05-08 19:20:15,764 - INFO - Set configuration api_version=(2, 5, 0) to skip auto check_version requests on startup
+2025-05-08 19:20:15,767 - INFO - Scraping products from https://www.amazon.com/gp/new-releases/kitchen?ie=UTF8&pg=1
+2025-05-08 19:20:24,657 - INFO - Scraping products from https://www.amazon.com/gp/new-releases/kitchen?ie=UTF8&pg=2
+2025-05-08 19:20:31,735 - INFO - Extracted 60 product URLs
+2025-05-08 19:20:31,736 - INFO - Found 60 products to scrape
+2025-05-08 19:20:31,737 - INFO - Visiting product page: https://www.amazon.com/Ninja-Milkshake-Calories-Program-NC701/dp/B0DSJW8SFG/ref=zg_bsnr_g_kitchen_d_sccl_1/134-7387740-6787608?psc=1
+2025-05-08 19:20:41,861 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 23, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:41,863 - ERROR - Error parsing review: time data 'Reviewed in the United States on March 6, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:41,865 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 11, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:41,867 - ERROR - Error parsing review: time data 'Reviewed in the United States on March 6, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:41,870 - ERROR - Error parsing review: time data 'Reviewed in the United States on March 31, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:41,872 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 4, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:41,875 - ERROR - Error parsing review: time data 'Reviewed in the United States on March 9, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:41,878 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 5, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:41,878 - INFO - Extracted 8 reviews for product B0DSJW8SFG
+2025-05-08 19:20:44,490 - INFO - Visiting product page: https://www.amazon.com/Cuisinart-Classic-Brushed-Stainless-WMR-CANAS/dp/B0DZ32BFKK/ref=zg_bsnr_g_kitchen_d_sccl_2/134-7387740-6787608?psc=1
+2025-05-08 19:20:51,327 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 30, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:51,329 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 6, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:51,331 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 28, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:51,333 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 27, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:51,335 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 1, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:51,339 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 1, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:51,343 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 6, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:51,346 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 28, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:20:51,346 - INFO - Extracted 8 reviews for product B0DZ32BFKK
+2025-05-08 19:20:55,139 - INFO - Visiting product page: https://www.amazon.com/Lvoetgif-Gifts-Mom-Daughter-Son/dp/B0DXFCNB3L/ref=zg_bsnr_g_kitchen_d_sccl_3/134-7387740-6787608?psc=1
+2025-05-08 19:21:02,796 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 7, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:02,799 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 8, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:02,802 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 7, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:02,805 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 8, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:02,807 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 11, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:02,809 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 8, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:02,811 - ERROR - Error parsing review: time data 'Reviewed in the United States on March 31, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:02,813 - ERROR - Error parsing review: time data 'Reviewed in the United States on March 31, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:02,814 - INFO - Extracted 8 reviews for product B0DXFCNB3L
+2025-05-08 19:21:04,907 - INFO - Visiting product page: https://www.amazon.com/Saineron-Grandma-Birthday-Bracelet-Christmas/dp/B0F19NZ7QD/ref=zg_bsnr_g_kitchen_d_sccl_4/134-7387740-6787608?psc=1
+2025-05-08 19:21:11,828 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 5, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:11,830 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 4, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:11,834 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 5, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:11,839 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 4, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:11,841 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 6, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:11,844 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 4, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:11,848 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 6, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:11,849 - INFO - Extracted 7 reviews for product B0F19NZ7QD
+2025-05-08 19:21:13,887 - INFO - Visiting product page: https://www.amazon.com/Dog-Mom-Gifts-Women-Dog-loving/dp/B0DZH8TH6L/ref=zg_bsnr_g_kitchen_d_sccl_5/134-7387740-6787608?psc=1
+2025-05-08 19:21:21,514 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 3, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:21,517 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 21, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:21,520 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 6, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:21,522 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 30, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:21,525 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 15, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:21,530 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 14, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:21,534 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 17, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:21,537 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 16, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:21,537 - INFO - Extracted 8 reviews for product B0DZH8TH6L
+2025-05-08 19:21:25,395 - INFO - Visiting product page: https://www.amazon.com/ZAGKOO-Mothers-Day-Gifts-Christmas/dp/B0F13BZB53/ref=zg_bsnr_g_kitchen_d_sccl_6/134-7387740-6787608?psc=1
+2025-05-08 19:21:33,263 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 17, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:33,296 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 1, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:33,300 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 18, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:33,302 - INFO - Extracted 3 reviews for product B0F13BZB53
+2025-05-08 19:21:35,412 - INFO - Visiting product page: https://www.amazon.com/Mothers-Daughter-Drinking-Birthday-Christmas/dp/B0DVP3MPS5/ref=zg_bsnr_g_kitchen_d_sccl_7/134-7387740-6787608?psc=1
+2025-05-08 19:21:42,240 - ERROR - Error parsing review: time data 'Reviewed in the United States on March 25, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:42,254 - ERROR - Error parsing review: time data 'Reviewed in the United States on March 30, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:42,269 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 19, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:42,285 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 6, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:42,288 - INFO - Extracted 4 reviews for product B0DVP3MPS5
+2025-05-08 19:21:45,555 - INFO - Visiting product page: https://www.amazon.com/12-Food-Grade-Silverware-Restaurant-Dishwasher/dp/B0DZ2X88NN/ref=zg_bsnr_g_kitchen_d_sccl_8/134-7387740-6787608?psc=1
+2025-05-08 19:21:53,658 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 22, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:53,662 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 25, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:53,666 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 2, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:53,670 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 23, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:53,673 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 30, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:53,676 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 27, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:53,679 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 4, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:53,681 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 29, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:21:53,682 - INFO - Extracted 8 reviews for product B0DZ2X88NN
+2025-05-08 19:21:56,955 - INFO - Visiting product page: https://www.amazon.com/Mothers-Daughter-Cooking-Mother-Kitchen/dp/B0F1JWWW8D/ref=zg_bsnr_g_kitchen_d_sccl_9/134-7387740-6787608?psc=1
+2025-05-08 19:22:03,844 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 29, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:03,846 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 26, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:03,849 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 2, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:03,852 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 28, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:03,855 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 24, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:03,858 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 23, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:03,860 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 28, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:03,861 - INFO - Extracted 7 reviews for product B0F1JWWW8D
+2025-05-08 19:22:07,295 - INFO - Visiting product page: https://www.amazon.com/Graduation-2025-Graduates-Daughter-Granddaughter/dp/B0F13DV2GL/ref=zg_bsnr_g_kitchen_d_sccl_10/134-7387740-6787608?psc=1
+2025-05-08 19:22:15,155 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 6, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:15,161 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 4, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:15,163 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 3, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:15,167 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 1, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:15,176 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 6, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:15,180 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 2, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:15,183 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 30, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:15,184 - INFO - Extracted 7 reviews for product B0F13DV2GL
+2025-05-08 19:22:18,044 - INFO - Visiting product page: https://www.amazon.com/Reusable-Containers-Snackle-Container-Compartment/dp/B0F2YHMP8T/ref=zg_bsnr_g_kitchen_d_sccl_11/134-7387740-6787608?psc=1
+2025-05-08 19:22:23,868 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 3, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:23,871 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 28, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:23,874 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 28, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:23,874 - INFO - Extracted 3 reviews for product B0F2YHMP8T
+2025-05-08 19:22:26,487 - INFO - Visiting product page: https://www.amazon.com/iAOVUEBY-Teacher-Appreciation-Gifts-Retirement/dp/B0F1T473Q5/ref=zg_bsnr_g_kitchen_d_sccl_12/134-7387740-6787608?psc=1
+2025-05-08 19:22:32,890 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 4, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:32,892 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 4, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:32,893 - INFO - Extracted 2 reviews for product B0F1T473Q5
+2025-05-08 19:22:34,992 - INFO - Visiting product page: https://www.amazon.com/UAREHIBY-Appreciation-Teachers-Birthday-Valentines/dp/B0DWX8MDGM/ref=zg_bsnr_g_kitchen_d_sccl_13/134-7387740-6787608?psc=1
+2025-05-08 19:22:42,729 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 28, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:42,734 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 4, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:42,737 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 1, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:42,740 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 3, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:42,744 - INFO - Extracted 4 reviews for product B0DWX8MDGM
+2025-05-08 19:22:45,083 - INFO - Visiting product page: https://www.amazon.com/Teacher-Appreciation-Gifts-Retirement-Graduation/dp/B0DYT6T6FC/ref=zg_bsnr_g_kitchen_d_sccl_14/134-7387740-6787608?psc=1
+2025-05-08 19:22:53,217 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 28, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:53,219 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 29, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:53,222 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 18, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:53,224 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 17, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:53,227 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 30, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:53,231 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 18, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:53,235 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 15, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:53,238 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 17, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:22:53,239 - INFO - Extracted 8 reviews for product B0DYT6T6FC
+2025-05-08 19:22:57,155 - INFO - Visiting product page: https://www.amazon.com/SHANAR-Gifts-Mom-Daughter-Inspirational/dp/B0F192GZRJ/ref=zg_bsnr_g_kitchen_d_sccl_15/134-7387740-6787608?psc=1
+2025-05-08 19:23:04,389 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 6, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:04,391 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 2, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:04,394 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 27, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:04,396 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 1, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:04,399 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 6, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:04,403 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 5, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:04,406 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 5, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:04,409 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 5, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:04,410 - INFO - Extracted 8 reviews for product B0F192GZRJ
+2025-05-08 19:23:07,520 - INFO - Visiting product page: https://www.amazon.com/Mothers-Daughter-Mamasaurus-daughter-Dinosaur/dp/B0DYNL6GVN/ref=zg_bsnr_g_kitchen_d_sccl_16/134-7387740-6787608?psc=1
+2025-05-08 19:23:14,950 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 4, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:14,953 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 27, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:14,956 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 13, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:14,958 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 16, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:14,961 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 7, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:14,965 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 27, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:14,968 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 22, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:14,971 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 26, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:14,972 - INFO - Extracted 8 reviews for product B0DYNL6GVN
+2025-05-08 19:23:17,294 - INFO - Visiting product page: https://www.amazon.com/Astercook-Detachable-Removable-Induction-Stackable/dp/B0DS1VT6CW/ref=zg_bsnr_g_kitchen_d_sccl_17/134-7387740-6787608?psc=1
+2025-05-08 19:23:27,404 - ERROR - Error parsing review: time data 'Reviewed in the United States on March 30, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:27,406 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 1, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:27,408 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 15, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:27,411 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 27, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:27,413 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 28, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:27,419 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 23, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:27,422 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 6, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:27,424 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 3, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:27,425 - INFO - Extracted 8 reviews for product B0DS1VT6CW
+2025-05-08 19:23:30,198 - INFO - Visiting product page: https://www.amazon.com/Teacher-Gifts-Appreciation-Inspirational-Retirement/dp/B0F1TWKKVM/ref=zg_bsnr_g_kitchen_d_sccl_18/134-7387740-6787608?psc=1
+2025-05-08 19:23:36,777 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 27, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:36,779 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 1, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:36,782 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 30, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:36,784 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 1, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:36,785 - INFO - Extracted 4 reviews for product B0F1TWKKVM
+2025-05-08 19:23:40,227 - INFO - Visiting product page: https://www.amazon.com/Mothers-Cutting-Engraved-Birthday-Daughter/dp/B0DSFRMGSM/ref=zg_bsnr_g_kitchen_d_sccl_19/134-7387740-6787608?psc=1
+2025-05-08 19:23:47,520 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 2, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:47,523 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 17, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:47,526 - ERROR - Error parsing review: time data 'Reviewed in the United States on March 25, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:47,529 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 7, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:47,529 - INFO - Extracted 4 reviews for product B0DSFRMGSM
+2025-05-08 19:23:50,726 - INFO - Visiting product page: https://www.amazon.com/CAROTE-Enameled-Baking-Handles-Heavy-Duty/dp/B0DXFL53PY/ref=zg_bsnr_g_kitchen_d_sccl_20/134-7387740-6787608?psc=1
+2025-05-08 19:23:57,127 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 3, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:57,131 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 6, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:57,133 - ERROR - Error parsing review: time data 'Reviewed in the United States on April 18, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:57,136 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 2, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:57,138 - ERROR - Error parsing review: time data 'Reviewed in the United States on May 3, 2025' does not match format 'Reviewed in %B %d, %Y'
+2025-05-08 19:23:57,139 - INFO - Extracted 5 reviews for product B0DXFL53PY
+2025-05-08 19:23:59,278 - INFO - Visiting product page: https://www.amazon.com/STANLEY-Leakproof-Two-Part-Insulated-Stainless/dp/B0DXN4N4LK/ref=zg_bsnr_g_kitchen_d_sccl_21/134-7387740-6787608?psc=1
+2025-05-08 19:24:17,239 - ERROR - Error processing product B0DXN4N4LK: Message: 
+Stacktrace:
+#0 0x55943f018bee <unknown>
+#1 0x55943ead5bcb <unknown>
+#2 0x55943eb20004 <unknown>
+#3 0x55943eb20191 <unknown>
+#4 0x55943eb6cf64 <unknown>
+#5 0x55943eb49ced <unknown>
+#6 0x55943eb6ae85 <unknown>
+#7 0x55943eb49a73 <unknown>
+#8 0x55943eb13d19 <unknown>
+#9 0x55943eb14ac8 <unknown>
+#10 0x55943efe556a <unknown>
+#11 0x55943efe89be <unknown>
+#12 0x55943efe8468 <unknown>
+#13 0x55943efe8e45 <unknown>
+#14 0x55943efcecdb <unknown>
+#15 0x55943efe91b0 <unknown>
+#16 0x55943efb7c49 <unknown>
+#17 0x55943f007f55 <unknown>
+#18 0x55943f00813b <unknown>
+#19 0x55943f017d65 <unknown>
+#20 0x7f9da3e861f5 <unknown>
+
+2025-05-08 19:24:17,240 - ERROR - Error in scrape_reviews: local variable 'review_elements' referenced before assignment
+2025-05-08 19:24:17,458 - INFO - Closing the Kafka producer with 9223372036.0 secs timeout.
+2025-05-08 19:24:17,460 - INFO - <BrokerConnection node_id=bootstrap-0 host=kafka1:9092 <connected> [IPv4 ('172.18.0.4', 9092)]>: Closing connection. 
+2025-05-08 19:24:17,464 - INFO - Completed review scraping job
+2025-05-08 19:39:21,534 - INFO - Amazon Review Collector Service starting...
+2025-05-08 19:39:21,535 - INFO - Starting review scraping job
+2025-05-08 19:39:23,045 - INFO - <BrokerConnection node_id=bootstrap-0 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.4', 9092)]>: connecting to kafka1:9092 [('172.18.0.4', 9092) IPv4]
+2025-05-08 19:39:23,046 - INFO - Probing node bootstrap-0 broker version
+2025-05-08 19:39:23,049 - INFO - <BrokerConnection node_id=bootstrap-0 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.4', 9092)]>: Connection complete.
+2025-05-08 19:39:23,153 - INFO - Broker version identified as 2.5.0
+2025-05-08 19:39:23,154 - INFO - Set configuration api_version=(2, 5, 0) to skip auto check_version requests on startup
+2025-05-08 19:39:23,158 - INFO - Scraping products from https://www.amazon.com/gp/new-releases/kitchen?ie=UTF8&pg=1
+2025-05-08 19:39:32,632 - INFO - Scraping products from https://www.amazon.com/gp/new-releases/kitchen?ie=UTF8&pg=2
+2025-05-08 19:41:22,929 - INFO - Amazon Review Collector Service starting...
+2025-05-08 19:41:22,929 - INFO - Starting review scraping job
+2025-05-08 19:41:23,938 - INFO - <BrokerConnection node_id=bootstrap-1 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.4', 9092)]>: connecting to kafka1:9092 [('172.18.0.4', 9092) IPv4]
+2025-05-08 19:41:23,939 - INFO - Probing node bootstrap-1 broker version
+2025-05-08 19:41:23,941 - INFO - <BrokerConnection node_id=bootstrap-1 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.4', 9092)]>: Connection complete.
+2025-05-08 19:41:24,046 - INFO - Broker version identified as 2.5.0
+2025-05-08 19:41:24,047 - INFO - Set configuration api_version=(2, 5, 0) to skip auto check_version requests on startup
+2025-05-08 19:41:24,053 - INFO - Scraping products from https://www.amazon.com/gp/new-releases/kitchen?ie=UTF8&pg=1
+2025-05-08 19:41:32,750 - INFO - Scraping products from https://www.amazon.com/gp/new-releases/kitchen?ie=UTF8&pg=2
+2025-05-08 19:41:41,300 - INFO - Extracted 60 product URLs
+2025-05-08 19:41:41,301 - INFO - Found 60 products to scrape
+2025-05-08 19:41:41,302 - INFO - Visiting product page: https://www.amazon.com/Ninja-Milkshake-Calories-Program-NC701/dp/B0DSJW8SFG/ref=zg_bsnr_g_kitchen_d_sccl_1/135-2273931-0532155?psc=1
+2025-05-08 19:41:56,245 - ERROR - Error processing product B0DSJW8SFG: Message: 
+Stacktrace:
+#0 0x563901399bee <unknown>
+#1 0x563900e56bcb <unknown>
+#2 0x563900ea1004 <unknown>
+#3 0x563900ea1191 <unknown>
+#4 0x563900eedf64 <unknown>
+#5 0x563900ecaced <unknown>
+#6 0x563900eebe85 <unknown>
+#7 0x563900ecaa73 <unknown>
+#8 0x563900e94d19 <unknown>
+#9 0x563900e95ac8 <unknown>
+#10 0x56390136656a <unknown>
+#11 0x5639013699be <unknown>
+#12 0x563901369468 <unknown>
+#13 0x563901369e45 <unknown>
+#14 0x56390134fcdb <unknown>
+#15 0x56390136a1b0 <unknown>
+#16 0x563901338c49 <unknown>
+#17 0x563901388f55 <unknown>
+#18 0x56390138913b <unknown>
+#19 0x563901398d65 <unknown>
+#20 0x7f8675fa01f5 <unknown>
+
+2025-05-08 19:41:56,278 - ERROR - Error in scrape_reviews: local variable 'review_elements' referenced before assignment
+2025-05-08 19:41:56,414 - INFO - Closing the Kafka producer with 9223372036.0 secs timeout.
+2025-05-08 19:41:56,416 - INFO - <BrokerConnection node_id=bootstrap-1 host=kafka1:9092 <connected> [IPv4 ('172.18.0.4', 9092)]>: Closing connection. 
+2025-05-08 19:41:56,418 - INFO - Completed review scraping job
+2025-05-08 19:55:38,752 - INFO - Amazon Review Collector Service starting...
+2025-05-08 19:55:38,753 - INFO - Starting review scraping job
+2025-05-08 19:55:40,258 - INFO - <BrokerConnection node_id=bootstrap-0 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.2', 9092)]>: connecting to kafka1:9092 [('172.18.0.2', 9092) IPv4]
+2025-05-08 19:55:40,259 - INFO - Probing node bootstrap-0 broker version
+2025-05-08 19:55:40,260 - INFO - <BrokerConnection node_id=bootstrap-0 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.2', 9092)]>: Connection complete.
+2025-05-08 19:55:40,366 - INFO - Broker version identified as 2.5.0
+2025-05-08 19:55:40,367 - INFO - Set configuration api_version=(2, 5, 0) to skip auto check_version requests on startup
+2025-05-08 19:55:40,369 - INFO - Scraping products from https://www.amazon.com/gp/new-releases/kitchen?ie=UTF8&pg=1
+2025-05-08 19:55:48,117 - INFO - Scraping products from https://www.amazon.com/gp/new-releases/kitchen?ie=UTF8&pg=2
+2025-05-08 19:55:55,067 - INFO - Extracted 60 product URLs
+2025-05-08 19:55:55,068 - INFO - Found 60 products to scrape
+2025-05-08 19:55:55,068 - INFO - Visiting product page: https://www.amazon.com/Ninja-Milkshake-Calories-Program-NC701/dp/B0DSJW8SFG/ref=zg_bsnr_g_kitchen_d_sccl_1/134-8258416-2252249?psc=1
+2025-05-08 19:56:04,291 - INFO - Extracted 0 reviews for product B0DSJW8SFG
+2025-05-08 19:56:07,434 - INFO - Visiting product page: https://www.amazon.com/Cuisinart-Classic-Brushed-Stainless-WMR-CANAS/dp/B0DZ32BFKK/ref=zg_bsnr_g_kitchen_d_sccl_2/134-8258416-2252249?psc=1
+2025-05-08 19:56:14,814 - INFO - Extracted 0 reviews for product B0DZ32BFKK
+2025-05-08 19:56:18,639 - INFO - Visiting product page: https://www.amazon.com/Lvoetgif-Gifts-Mom-Daughter-Son/dp/B0DXFCNB3L/ref=zg_bsnr_g_kitchen_d_sccl_3/134-8258416-2252249?psc=1
+2025-05-08 19:56:28,560 - INFO - Extracted 0 reviews for product B0DXFCNB3L
+2025-05-08 19:56:31,427 - INFO - Visiting product page: https://www.amazon.com/Dog-Mom-Gifts-Women-Dog-loving/dp/B0DZH8TH6L/ref=zg_bsnr_g_kitchen_d_sccl_4/134-8258416-2252249?psc=1
+2025-05-08 19:56:37,916 - INFO - Extracted 0 reviews for product B0DZH8TH6L
+2025-05-08 19:56:41,357 - INFO - Visiting product page: https://www.amazon.com/Saineron-Grandma-Birthday-Bracelet-Christmas/dp/B0F19NZ7QD/ref=zg_bsnr_g_kitchen_d_sccl_5/134-8258416-2252249?psc=1
+2025-05-08 19:56:47,874 - INFO - Extracted 0 reviews for product B0F19NZ7QD
+2025-05-08 19:56:50,104 - INFO - Visiting product page: https://www.amazon.com/ZAGKOO-Mothers-Day-Gifts-Christmas/dp/B0F13BZB53/ref=zg_bsnr_g_kitchen_d_sccl_6/134-8258416-2252249?psc=1
+2025-05-08 19:56:58,051 - INFO - Extracted 0 reviews for product B0F13BZB53
+2025-05-08 19:57:00,223 - INFO - Visiting product page: https://www.amazon.com/Mothers-Daughter-Drinking-Birthday-Christmas/dp/B0DVP3MPS5/ref=zg_bsnr_g_kitchen_d_sccl_7/134-8258416-2252249?psc=1
+2025-05-08 19:57:07,142 - INFO - Extracted 0 reviews for product B0DVP3MPS5
+2025-05-08 19:57:10,802 - INFO - Visiting product page: https://www.amazon.com/Graduation-2025-Graduates-Daughter-Granddaughter/dp/B0F13DV2GL/ref=zg_bsnr_g_kitchen_d_sccl_8/134-8258416-2252249?psc=1
+2025-05-08 19:57:18,390 - INFO - Extracted 0 reviews for product B0F13DV2GL
+2025-05-08 19:57:21,441 - INFO - Visiting product page: https://www.amazon.com/12-Food-Grade-Silverware-Restaurant-Dishwasher/dp/B0DZ2X88NN/ref=zg_bsnr_g_kitchen_d_sccl_9/134-8258416-2252249?psc=1
+2025-05-08 19:57:29,221 - INFO - Extracted 0 reviews for product B0DZ2X88NN
+2025-05-08 19:57:31,545 - INFO - Visiting product page: https://www.amazon.com/Mothers-Daughter-Cooking-Mother-Kitchen/dp/B0F1JWWW8D/ref=zg_bsnr_g_kitchen_d_sccl_10/134-8258416-2252249?psc=1
+2025-05-08 19:57:38,605 - INFO - Extracted 0 reviews for product B0F1JWWW8D
+2025-05-08 19:57:42,513 - INFO - Visiting product page: https://www.amazon.com/iAOVUEBY-Teacher-Appreciation-Gifts-Retirement/dp/B0F1T473Q5/ref=zg_bsnr_g_kitchen_d_sccl_11/134-8258416-2252249?psc=1
+2025-05-08 19:57:49,343 - INFO - Extracted 0 reviews for product B0F1T473Q5
+2025-05-08 19:57:52,202 - INFO - Visiting product page: https://www.amazon.com/Reusable-Containers-Snackle-Container-Compartment/dp/B0F2YHMP8T/ref=zg_bsnr_g_kitchen_d_sccl_12/134-8258416-2252249?psc=1
+2025-05-08 19:58:00,396 - INFO - Extracted 0 reviews for product B0F2YHMP8T
+2025-05-08 19:58:03,132 - INFO - Visiting product page: https://www.amazon.com/UAREHIBY-Appreciation-Teachers-Birthday-Valentines/dp/B0DWX8MDGM/ref=zg_bsnr_g_kitchen_d_sccl_13/134-8258416-2252249?psc=1
+2025-05-08 19:58:09,142 - INFO - Extracted 0 reviews for product B0DWX8MDGM
+2025-05-08 19:58:11,232 - INFO - Visiting product page: https://www.amazon.com/Teacher-Appreciation-Gifts-Retirement-Graduation/dp/B0DYT6T6FC/ref=zg_bsnr_g_kitchen_d_sccl_14/134-8258416-2252249?psc=1
+2025-05-08 19:58:20,247 - INFO - Extracted 0 reviews for product B0DYT6T6FC
+2025-05-08 19:58:22,338 - INFO - Visiting product page: https://www.amazon.com/Astercook-Detachable-Removable-Induction-Stackable/dp/B0DS1VT6CW/ref=zg_bsnr_g_kitchen_d_sccl_15/134-8258416-2252249?psc=1
+2025-05-08 19:58:31,161 - INFO - Extracted 0 reviews for product B0DS1VT6CW
+2025-05-08 19:58:34,615 - INFO - Visiting product page: https://www.amazon.com/Mothers-Daughter-Mamasaurus-daughter-Dinosaur/dp/B0DYNL6GVN/ref=zg_bsnr_g_kitchen_d_sccl_16/134-8258416-2252249?psc=1
+2025-05-08 19:58:40,259 - INFO - Extracted 0 reviews for product B0DYNL6GVN
+2025-05-08 19:58:44,105 - INFO - Visiting product page: https://www.amazon.com/SHANAR-Gifts-Mom-Daughter-Inspirational/dp/B0F192GZRJ/ref=zg_bsnr_g_kitchen_d_sccl_17/134-8258416-2252249?psc=1
+2025-05-08 19:58:50,872 - INFO - Extracted 0 reviews for product B0F192GZRJ
+2025-05-08 19:58:53,847 - INFO - Visiting product page: https://www.amazon.com/Teacher-Gifts-Appreciation-Inspirational-Retirement/dp/B0F1TWKKVM/ref=zg_bsnr_g_kitchen_d_sccl_18/134-8258416-2252249?psc=1
+2025-05-08 19:59:00,966 - INFO - Extracted 0 reviews for product B0F1TWKKVM
+2025-05-08 19:59:04,868 - INFO - Visiting product page: https://www.amazon.com/Mothers-Cutting-Engraved-Birthday-Daughter/dp/B0DSFRMGSM/ref=zg_bsnr_g_kitchen_d_sccl_19/134-8258416-2252249?psc=1
+2025-05-08 19:59:12,590 - INFO - Extracted 0 reviews for product B0DSFRMGSM
+2025-05-08 19:59:16,523 - INFO - Visiting product page: https://www.amazon.com/CAROTE-Enameled-Baking-Handles-Heavy-Duty/dp/B0DXFL53PY/ref=zg_bsnr_g_kitchen_d_sccl_20/134-8258416-2252249?psc=1
+2025-05-08 19:59:24,010 - INFO - Extracted 0 reviews for product B0DXFL53PY
+2025-05-08 19:59:27,795 - INFO - Visiting product page: https://www.amazon.com/STANLEY-Leakproof-Two-Part-Insulated-Stainless/dp/B0DXN4GW9Q/ref=zg_bsnr_g_kitchen_d_sccl_21/134-8258416-2252249?psc=1
+2025-05-08 19:59:35,068 - INFO - Extracted 0 reviews for product B0DXN4GW9Q
+2025-05-08 19:59:38,576 - INFO - Visiting product page: https://www.amazon.com/Cabipeove-Silicone-Straw-Cleaner-Brush/dp/B0F1T7B5CG/ref=zg_bsnr_g_kitchen_d_sccl_22/134-8258416-2252249?psc=1
+2025-05-08 19:59:45,339 - INFO - Extracted 0 reviews for product B0F1T7B5CG
+2025-05-08 19:59:48,462 - INFO - Visiting product page: https://www.amazon.com/Enjoyidea-Rectangle-Tables-8-Cover-Spandex-Tablecloth/dp/B0DP61GN9Y/ref=zg_bsnr_g_kitchen_d_sccl_23/134-8258416-2252249?psc=1
+2025-05-08 19:59:56,921 - INFO - Extracted 0 reviews for product B0DP61GN9Y
+2025-05-08 19:59:59,024 - INFO - Visiting product page: https://www.amazon.com/LUICONMO-Cat-Mom-Gifts-Women/dp/B0DYV4GXM1/ref=zg_bsnr_g_kitchen_d_sccl_24/134-8258416-2252249?psc=1
+2025-05-08 20:00:06,445 - INFO - Extracted 0 reviews for product B0DYV4GXM1
+2025-05-08 20:00:09,889 - INFO - Visiting product page: https://www.amazon.com/Mothers-Day-Gifts-Daughter-Christmas/dp/B0F13F71NJ/ref=zg_bsnr_g_kitchen_d_sccl_25/134-8258416-2252249?psc=1
+2025-05-08 20:00:15,408 - INFO - Extracted 0 reviews for product B0F13F71NJ
+2025-05-08 20:00:17,464 - INFO - Visiting product page: https://www.amazon.com/Grandmother-Birthday-Granddaughter-Grandson-Insulated/dp/B0F17L1N7L/ref=zg_bsnr_g_kitchen_d_sccl_26/134-8258416-2252249?psc=1
+2025-05-08 20:00:23,672 - INFO - Extracted 0 reviews for product B0F17L1N7L
+2025-05-08 20:00:26,026 - INFO - Visiting product page: https://www.amazon.com/Geelfland-Appreciation-Teachers-Coworkers-Employees/dp/B0DX2KPZ7Y/ref=zg_bsnr_g_kitchen_d_sccl_27/134-8258416-2252249?psc=1
+2025-05-08 20:00:32,748 - INFO - Extracted 0 reviews for product B0DX2KPZ7Y
+2025-05-08 20:00:35,628 - INFO - Visiting product page: https://www.amazon.com/Astercook-Silverware-Food-Grade-Stainless-Restaurant/dp/B0DRPD81K1/ref=zg_bsnr_g_kitchen_d_sccl_28/134-8258416-2252249?psc=1
+2025-05-08 20:00:40,425 - INFO - <BrokerConnection node_id=1 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.2', 9092)]>: connecting to kafka1:9092 [('172.18.0.2', 9092) IPv4]
+2025-05-08 20:00:40,426 - INFO - <BrokerConnection node_id=1 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.2', 9092)]>: Connection complete.
+2025-05-08 20:00:40,427 - INFO - <BrokerConnection node_id=bootstrap-0 host=kafka1:9092 <connected> [IPv4 ('172.18.0.2', 9092)]>: Closing connection. 
+2025-05-08 20:00:44,228 - INFO - Extracted 0 reviews for product B0DRPD81K1
+2025-05-08 20:00:48,096 - INFO - Visiting product page: https://www.amazon.com/Polmmys-Mothers-Day-Gifts-Daughter/dp/B0DY21VQHT/ref=zg_bsnr_g_kitchen_d_sccl_29/134-8258416-2252249?psc=1
+2025-05-08 20:00:55,281 - INFO - Extracted 0 reviews for product B0DY21VQHT
+2025-05-08 20:00:59,007 - INFO - Visiting product page: https://www.amazon.com/Cabtnca-Mothers-Birthday-Christmas-Daughter/dp/B0DWWH16YD/ref=zg_bsnr_g_kitchen_d_sccl_30/134-8258416-2252249?psc=1
+2025-05-08 20:01:05,354 - INFO - Extracted 0 reviews for product B0DWWH16YD
+2025-05-08 20:01:07,620 - INFO - Visiting product page: https://www.amazon.com/UrJKJV-Mothers-Day-Gifts-Daughter/dp/B0F2712XJF/ref=zg_bsnr_g_kitchen_d_sccl_1/134-8258416-2252249?psc=1
+2025-05-08 20:01:14,100 - INFO - Extracted 0 reviews for product B0F2712XJF
+2025-05-08 20:01:16,860 - INFO - Visiting product page: https://www.amazon.com/HydroJug-Slim-Can-Cooler-Dishwasher/dp/B0F29XPW91/ref=zg_bsnr_g_kitchen_d_sccl_2/134-8258416-2252249?psc=1
+2025-05-08 20:01:22,513 - INFO - Extracted 0 reviews for product B0F29XPW91
+2025-05-08 20:01:24,828 - INFO - Visiting product page: https://www.amazon.com/MEATER-Pro-Duo-Thermometer-Resistance/dp/B0DNTVC2WD/ref=zg_bsnr_g_kitchen_d_sccl_3/134-8258416-2252249?psc=1
+2025-05-08 20:02:14,296 - INFO - Amazon Review Collector Service starting...
+2025-05-08 20:02:14,297 - INFO - Starting review scraping job
+2025-05-08 20:02:15,311 - INFO - <BrokerConnection node_id=bootstrap-0 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.2', 9092)]>: connecting to kafka1:9092 [('172.18.0.2', 9092) IPv4]
+2025-05-08 20:02:15,311 - INFO - Probing node bootstrap-0 broker version
+2025-05-08 20:02:15,313 - INFO - <BrokerConnection node_id=bootstrap-0 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.2', 9092)]>: Connection complete.
+2025-05-08 20:02:15,417 - INFO - Broker version identified as 2.5.0
+2025-05-08 20:02:15,417 - INFO - Set configuration api_version=(2, 5, 0) to skip auto check_version requests on startup
+2025-05-08 20:02:15,421 - INFO - Scraping products from https://www.amazon.com/gp/new-releases/kitchen?ie=UTF8&pg=1
+2025-05-08 20:02:24,350 - INFO - Scraping products from https://www.amazon.com/gp/new-releases/kitchen?ie=UTF8&pg=2
+2025-05-08 20:02:32,406 - INFO - Extracted 60 product URLs
+2025-05-08 20:02:32,407 - INFO - Found 60 products to scrape
+2025-05-08 20:02:32,407 - INFO - Visiting product page: https://www.amazon.com/Ninja-Milkshake-Calories-Program-NC701/dp/B0DSJW8SFG/ref=zg_bsnr_g_kitchen_d_sccl_1/130-1947861-4050638?psc=1
+2025-05-08 20:02:40,257 - WARNING - reviews geted using div[id^="customer_review-"]
+2025-05-08 20:02:40,277 - INFO - Extracted 8 reviews for product B0DSJW8SFG
+2025-05-08 20:02:40,277 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:40,278 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:40,278 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:40,278 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:40,280 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:40,282 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:40,283 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:40,284 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:40,285 - INFO - Successfully sent 8 reviews to Kafka
+2025-05-08 20:02:42,613 - INFO - Visiting product page: https://www.amazon.com/Cuisinart-Classic-Brushed-Stainless-WMR-CANAS/dp/B0DZ32BFKK/ref=zg_bsnr_g_kitchen_d_sccl_2/130-1947861-4050638?psc=1
+2025-05-08 20:02:49,181 - WARNING - reviews geted using div[id^="customer_review-"]
+2025-05-08 20:02:49,191 - INFO - Extracted 8 reviews for product B0DZ32BFKK
+2025-05-08 20:02:49,192 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:49,192 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:49,192 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:49,193 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:49,193 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:49,194 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:49,195 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:49,195 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:49,197 - INFO - Successfully sent 8 reviews to Kafka
+2025-05-08 20:02:52,677 - INFO - Visiting product page: https://www.amazon.com/Lvoetgif-Gifts-Mom-Daughter-Son/dp/B0DXFCNB3L/ref=zg_bsnr_g_kitchen_d_sccl_3/130-1947861-4050638?psc=1
+2025-05-08 20:02:59,912 - WARNING - reviews geted using div[id^="customer_review-"]
+2025-05-08 20:02:59,923 - INFO - Extracted 8 reviews for product B0DXFCNB3L
+2025-05-08 20:02:59,924 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:59,925 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:59,925 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:59,926 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:59,926 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:59,927 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:59,928 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:59,928 - ERROR - Error sending review to Kafka: 'product_id'
+2025-05-08 20:02:59,929 - INFO - Successfully sent 8 reviews to Kafka
+2025-05-08 20:04:19,582 - INFO - Amazon Review Collector Service starting...
+2025-05-08 20:04:19,583 - INFO - Starting review scraping job
+2025-05-08 20:04:20,467 - INFO - <BrokerConnection node_id=bootstrap-0 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.2', 9092)]>: connecting to kafka1:9092 [('172.18.0.2', 9092) IPv4]
+2025-05-08 20:04:20,468 - INFO - Probing node bootstrap-0 broker version
+2025-05-08 20:04:20,469 - INFO - <BrokerConnection node_id=bootstrap-0 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.2', 9092)]>: Connection complete.
+2025-05-08 20:04:20,574 - INFO - Broker version identified as 2.5.0
+2025-05-08 20:04:20,575 - INFO - Set configuration api_version=(2, 5, 0) to skip auto check_version requests on startup
+2025-05-08 20:04:20,581 - INFO - Scraping products from https://www.amazon.com/gp/new-releases/kitchen?ie=UTF8&pg=1
+2025-05-08 20:04:29,384 - INFO - Scraping products from https://www.amazon.com/gp/new-releases/kitchen?ie=UTF8&pg=2
+2025-05-08 20:04:37,843 - INFO - Extracted 60 product URLs
+2025-05-08 20:04:37,843 - INFO - Found 60 products to scrape
+2025-05-08 20:04:37,844 - INFO - Visiting product page: https://www.amazon.com/Ninja-Milkshake-Calories-Program-NC701/dp/B0DSJW8SFG/ref=zg_bsnr_g_kitchen_d_sccl_1/143-2175889-9321623?psc=1
+2025-05-08 20:04:45,877 - WARNING - reviews geted using div[id^="customer_review-"]
+2025-05-08 20:04:45,898 - INFO - Extracted 8 reviews for product B0DSJW8SFG
+2025-05-08 20:04:45,908 - INFO - <BrokerConnection node_id=1 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.2', 9092)]>: connecting to kafka1:9092 [('172.18.0.2', 9092) IPv4]
+2025-05-08 20:04:45,910 - INFO - <BrokerConnection node_id=2 host=kafka2:9094 <connecting> [IPv4 ('172.18.0.5', 9094)]>: connecting to kafka2:9094 [('172.18.0.5', 9094) IPv4]
+2025-05-08 20:04:45,911 - INFO - <BrokerConnection node_id=1 host=kafka1:9092 <connecting> [IPv4 ('172.18.0.2', 9092)]>: Connection complete.
+2025-05-08 20:04:45,912 - INFO - <BrokerConnection node_id=bootstrap-0 host=kafka1:9092 <connected> [IPv4 ('172.18.0.2', 9092)]>: Closing connection. 
+2025-05-08 20:04:45,913 - INFO - <BrokerConnection node_id=2 host=kafka2:9094 <connecting> [IPv4 ('172.18.0.5', 9094)]>: Connection complete.
+2025-05-08 20:04:45,961 - INFO - Successfully sent 8 reviews to Kafka
+2025-05-08 20:04:48,995 - INFO - Visiting product page: https://www.amazon.com/Cuisinart-Classic-Brushed-Stainless-WMR-CANAS/dp/B0DZ32BFKK/ref=zg_bsnr_g_kitchen_d_sccl_2/143-2175889-9321623?psc=1
+2025-05-08 20:04:54,795 - WARNING - reviews geted using div[id^="customer_review-"]
+2025-05-08 20:04:54,806 - INFO - Extracted 8 reviews for product B0DZ32BFKK
+2025-05-08 20:04:54,813 - INFO - Successfully sent 8 reviews to Kafka
+2025-05-08 20:04:58,533 - INFO - Visiting product page: https://www.amazon.com/Lvoetgif-Gifts-Mom-Daughter-Son/dp/B0DXFCNB3L/ref=zg_bsnr_g_kitchen_d_sccl_3/143-2175889-9321623?psc=1
+2025-05-08 20:05:06,187 - WARNING - reviews geted using div[id^="customer_review-"]
+2025-05-08 20:05:06,200 - INFO - Extracted 8 reviews for product B0DXFCNB3L
+2025-05-08 20:05:06,209 - INFO - Successfully sent 8 reviews to Kafka
+2025-05-08 20:05:09,770 - INFO - Visiting product page: https://www.amazon.com/Dog-Mom-Gifts-Women-Dog-loving/dp/B0DZH8TH6L/ref=zg_bsnr_g_kitchen_d_sccl_4/143-2175889-9321623?psc=1
+2025-05-08 20:05:17,276 - WARNING - reviews geted using div[id^="customer_review-"]
+2025-05-08 20:05:17,289 - INFO - Extracted 8 reviews for product B0DZH8TH6L
+2025-05-08 20:05:17,296 - INFO - Successfully sent 8 reviews to Kafka
+2025-05-08 20:05:19,950 - INFO - Visiting product page: https://www.amazon.com/Saineron-Grandma-Birthday-Bracelet-Christmas/dp/B0F19NZ7QD/ref=zg_bsnr_g_kitchen_d_sccl_5/143-2175889-9321623?psc=1
+2025-05-08 20:05:26,743 - WARNING - reviews geted using div[id^="customer_review-"]
+2025-05-08 20:05:26,756 - INFO - Extracted 7 reviews for product B0F19NZ7QD
+2025-05-08 20:05:26,772 - INFO - Successfully sent 7 reviews to Kafka
+2025-05-08 20:05:29,971 - INFO - Visiting product page: https://www.amazon.com/ZAGKOO-Mothers-Day-Gifts-Christmas/dp/B0F13BZB53/ref=zg_bsnr_g_kitchen_d_sccl_6/143-2175889-9321623?psc=1
+2025-05-08 20:05:36,722 - WARNING - reviews geted using div[id^="customer_review-"]
+2025-05-08 20:05:36,728 - INFO - Extracted 3 reviews for product B0F13BZB53
+2025-05-08 20:05:36,734 - INFO - Successfully sent 3 reviews to Kafka
+2025-05-08 20:05:39,724 - INFO - Visiting product page: https://www.amazon.com/Mothers-Daughter-Drinking-Birthday-Christmas/dp/B0DVP3MPS5/ref=zg_bsnr_g_kitchen_d_sccl_7/143-2175889-9321623?psc=1
+2025-05-08 20:05:46,088 - WARNING - reviews geted using div[id^="customer_review-"]
+2025-05-08 20:05:46,100 - INFO - Extracted 4 reviews for product B0DVP3MPS5
+2025-05-08 20:05:46,108 - INFO - Successfully sent 4 reviews to Kafka
+2025-05-08 20:05:48,272 - INFO - Visiting product page: https://www.amazon.com/Graduation-2025-Graduates-Daughter-Granddaughter/dp/B0F13DV2GL/ref=zg_bsnr_g_kitchen_d_sccl_8/143-2175889-9321623?psc=1
