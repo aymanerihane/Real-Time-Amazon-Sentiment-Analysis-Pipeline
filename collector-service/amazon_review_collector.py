@@ -23,6 +23,10 @@ log_dir = Path("/data/logs")
 log_dir.mkdir(parents=True, exist_ok=True)
 log_file = log_dir / "collector.log"
 
+# Create screenshots directory if it doesn't exist
+screenshot_dir = Path("/data/screenshots")
+screenshot_dir.mkdir(parents=True, exist_ok=True)
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -43,8 +47,15 @@ def setup_selenium():
     try:
         logger.info("Configuring Chrome options...")
         chrome_options = Options()
-        chrome_options.binary_location = os.getenv("CHROME_BIN", "/usr/bin/chromium")
-        # chrome_options.add_argument('--headless')
+        
+        # Set Chrome binary location
+        chrome_bin = os.getenv("CHROME_BIN", "/usr/bin/chromium")
+        if not os.path.exists(chrome_bin):
+            chrome_bin = "/usr/bin/google-chrome"  # Fallback to google-chrome
+        chrome_options.binary_location = chrome_bin
+        
+        # Essential options for running in container
+        chrome_options.add_argument('--headless=new')  # Use new headless mode
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
         chrome_options.add_argument('--disable-gpu')
@@ -59,8 +70,11 @@ def setup_selenium():
         chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
         chrome_options.add_experimental_option('useAutomationExtension', False)
         
+        # Create Service object
+        service = Service()
+        
         logger.info("Initializing Chrome WebDriver...")
-        driver = webdriver.Chrome(options=chrome_options)
+        driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.set_page_load_timeout(30)
         
         # Execute CDP commands to prevent detection
@@ -214,7 +228,7 @@ def amazon_login(driver, email, password):
             time.sleep(random.uniform(2, 4))
             
             # Take screenshot of homepage
-            screenshot_path = f"/data/logs/amazon_login_attempt_{retry_count + 1}_homepage.png"
+            screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_homepage.png"
             driver.save_screenshot(screenshot_path)
             logger.info(f"Saved homepage screenshot to {screenshot_path}")
             
@@ -226,7 +240,7 @@ def amazon_login(driver, email, password):
             time.sleep(random.uniform(1, 2))
             
             # Take screenshot of sign in page
-            screenshot_path = f"/data/logs/amazon_login_attempt_{retry_count + 1}_signin_page.png"
+            screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_signin_page.png"
             driver.save_screenshot(screenshot_path)
             logger.info(f"Saved sign in page screenshot to {screenshot_path}")
             
@@ -248,7 +262,7 @@ def amazon_login(driver, email, password):
             time.sleep(random.uniform(1, 2))
             
             # Take screenshot after email entry
-            screenshot_path = f"/data/logs/amazon_login_attempt_{retry_count + 1}_after_email.png"
+            screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_after_email.png"
             driver.save_screenshot(screenshot_path)
             logger.info(f"Saved after email screenshot to {screenshot_path}")
             
@@ -272,7 +286,7 @@ def amazon_login(driver, email, password):
             time.sleep(5)
             
             # Take screenshot after login attempt
-            screenshot_path = f"/data/logs/amazon_login_attempt_{retry_count + 1}_after_login.png"
+            screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_after_login.png"
             driver.save_screenshot(screenshot_path)
             logger.info(f"Saved after login screenshot to {screenshot_path}")
             
@@ -289,7 +303,7 @@ def amazon_login(driver, email, password):
             logger.error(f"Login attempt {retry_count + 1} failed: {str(e)}")
             # Take screenshot on error
             try:
-                screenshot_path = f"/data/logs/amazon_login_attempt_{retry_count + 1}_error.png"
+                screenshot_path = f"/data/screenshots/amazon_login_attempt_{retry_count + 1}_error.png"
                 driver.save_screenshot(screenshot_path)
                 logger.info(f"Saved error screenshot to {screenshot_path}")
             except Exception as screenshot_error:
