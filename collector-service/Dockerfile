@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     chromium \
     chromium-driver \
+    netcat-traditional \
     && wget -qO - https://packages.confluent.io/deb/7.3/archive.key | apt-key add - \
     && echo "deb [arch=amd64] https://packages.confluent.io/deb/7.3 stable main" >> /etc/apt/sources.list \
     && apt-get update \

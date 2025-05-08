@@ -31,7 +31,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 180s
+      start_period: 120s
    
     
 
@@ -68,7 +68,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 180s
+      start_period: 120s
 
 
   kafka-init:
@@ -100,12 +100,22 @@ services:
             exit 1
           fi
         done &&
-        echo 'Kafka is ready. Creating topics...' &&
-        /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka1:9092 --create --topic amazon-reviews-raw --partitions 3 --replication-factor 2 &&
-        /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka1:9092 --create --topic sentiment-results --partitions 3 --replication-factor 2 &&
-        echo 'Topics created successfully!' 
-        # Keep container running to maintain health check
-        # tail -f /dev/null
+        echo 'Kafka is ready. Checking topics...' &&
+        # Check and create amazon-reviews-raw topic on kafka1 if it doesn't exist
+        if ! /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka1:9092 --list | grep -q 'amazon-reviews-raw'; then
+          echo 'Creating amazon-reviews-raw topic on kafka1...' &&
+          /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka1:9092 --create --topic amazon-reviews-raw --partitions 3 --replication-factor 2 --config min.insync.replicas=1
+        else
+          echo 'amazon-reviews-raw topic already exists on kafka1'
+        fi &&
+        # Check and create sentiment-results topic on kafka2 if it doesn't exist
+        if ! /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka2:9094 --list | grep -q 'sentiment-results'; then
+          echo 'Creating sentiment-results topic on kafka2...' &&
+          /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka2:9094 --create --topic sentiment-results --partitions 3 --replication-factor 2 --config min.insync.replicas=1
+        else
+          echo 'sentiment-results topic already exists on kafka2'
+        fi &&
+        echo 'All topics verified.'
       "
     healthcheck:
       test: ["CMD-SHELL", "/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list | grep -E 'amazon-reviews-raw|sentiment-results' || exit 1"]
@@ -151,25 +161,30 @@ services:
           echo 'MongoDB not ready yet. Sleeping...';
           sleep 5;
         done &&
-        echo 'MongoDB is ready. Creating collections...' &&
-        mongosh --host mongodb -u root -p example --authenticationDatabase admin --eval '
-          db = db.getSiblingDB(\"amazon_reviews\");
-          db.createCollection(\"reviews\");
-          db.createCollection(\"sentiment_analysis\");
-          db.createCollection(\"metrics\");
-          print(\"MongoDB collections created.\");
-        ' &&
-        # Verify collections were created
+        echo 'MongoDB is ready. Checking collections...' &&
         mongosh --host mongodb -u root -p example --authenticationDatabase admin --eval '
           db = db.getSiblingDB(\"amazon_reviews\");
           collections = db.getCollectionNames();
-          if (collections.includes(\"reviews\") && collections.includes(\"sentiment_analysis\") && collections.includes(\"metrics\")) {
-            print(\"All collections verified.\");
-            exit(0);
+          if (!collections.includes(\"reviews\")) {
+            print(\"Creating reviews collection...\");
+            db.createCollection(\"reviews\");
           } else {
-            print(\"Missing collections.\");
-            exit(1);
+            print(\"reviews collection already exists\");
           }
+          if (!collections.includes(\"sentiment_analysis\")) {
+            print(\"Creating sentiment_analysis collection...\");
+            db.createCollection(\"sentiment_analysis\");
+          } else {
+            print(\"sentiment_analysis collection already exists\");
+          }
+          if (!collections.includes(\"metrics\")) {
+            print(\"Creating metrics collection...\");
+            db.createCollection(\"metrics\");
+          } else {
+            print(\"metrics collection already exists\");
+          }
+          print(\"All collections verified.\");
+          exit(0);
         '
       "
     networks:
@@ -255,7 +270,7 @@ services:
         echo 'Waiting for Kafka to be ready...' &&
         MAX_RETRIES=30
         RETRY_COUNT=0
-        until /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka1:9092 --list; do
+        until nc -z kafka1 9092 && nc -z kafka2 9094; do
           echo 'Kafka not ready yet. Sleeping... (Retry $RETRY_COUNT/$MAX_RETRIES)';
           sleep 5;
           RETRY_COUNT=$((RETRY_COUNT+1))
