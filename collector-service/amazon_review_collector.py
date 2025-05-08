@@ -23,6 +23,10 @@ log_dir = Path("/data/logs")
 log_dir.mkdir(parents=True, exist_ok=True)
 log_file = log_dir / "collector.log"
 
+# Create screenshots directory if it doesn't exist
+screenshot_dir = Path("/data/screenshots")
+screenshot_dir.mkdir(parents=True, exist_ok=True)
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -43,8 +47,15 @@ def setup_selenium():
     try:
         logger.info("Configuring Chrome options...")
         chrome_options = Options()
-        chrome_options.binary_location = os.getenv("CHROME_BIN", "/usr/bin/chromium")
-        # chrome_options.add_argument('--headless')
+        
+        # Set Chrome binary location
+        chrome_bin = os.getenv("CHROME_BIN", "/usr/bin/chromium")
+        if not os.path.exists(chrome_bin):
+            chrome_bin = "/usr/bin/google-chrome"  # Fallback to google-chrome
+        chrome_options.binary_location = chrome_bin
+        
+        # Essential options for running in container
+        chrome_options.add_argument('--headless=new')  # Use new headless mode
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
         chrome_options.add_argument('--disable-gpu')
@@ -59,8 +70,11 @@ def setup_selenium():
         chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
         chrome_options.add_experimental_option('useAutomationExtension', False)
         
+        # Create Service object
+        service = Service()
+        
         logger.info("Initializing Chrome WebDriver...")
-        driver = webdriver.Chrome(options=chrome_options)
+        driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.set_page_load_timeout(30)
         
         # Execute CDP commands to prevent detection
