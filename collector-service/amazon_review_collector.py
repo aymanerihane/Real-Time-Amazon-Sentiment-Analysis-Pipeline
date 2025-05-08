@@ -29,8 +29,9 @@ USER_AGENTS = [
 ]
 
 # Setup logging
-log_dir = Path("logs")
-log_dir.mkdir(exist_ok=True)
+log_dir = Path("/data/logs")
+log_dir.mkdir(parents=True,exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -241,6 +242,7 @@ def store_reviews_in_mongodb(mongo_client, reviews):
         logger.error("MongoDB client is not available")
         return
     
+
     try:
         db = mongo_client[MONGODB_DATABASE]
         collection = db[MONGODB_COLLECTION]
