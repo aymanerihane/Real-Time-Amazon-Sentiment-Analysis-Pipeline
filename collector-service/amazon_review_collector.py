@@ -18,6 +18,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
+# MongoDB Connection
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 
 # Basic user agents
 USER_AGENTS = [
@@ -41,6 +44,23 @@ logger = logging.getLogger(__name__)
 # Kafka configuration
 KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka1:9092,kafka2:9093')
 KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'amazon-reviews-raw')
+
+# MongoDB configuration
+MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin')
+MONGODB_DATABASE = os.getenv('MONGODB_DATABASE', 'amazon_reviews')
+MONGODB_COLLECTION = os.getenv('MONGODB_COLLECTION', 'reviews')
+
+def setup_mongodb():
+    """Create and return a MongoDB client instance"""
+    try:
+        client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+        # Test the connection
+        client.admin.command('ping')
+        logger.info("Successfully connected to MongoDB")
+        return client
+    except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+        logger.error(f"MongoDB connection error: {str(e)}")
+        return None
 
 def setup_selenium():
     """Set up Selenium WebDriver with Chrome"""
@@ -189,7 +209,7 @@ def extract_reviews(driver, product_info):
                     "date": date,
                     "helpful_votes": helpful[0],
                     "total_votes": helpful[1],
-                    "scrape_time": datetime.now().isoformat()
+                    "scrape_time": datetime.now().strftime("%Y-%m-%d %H:%M")
                 }
                 reviews.append(review_data)
             except Exception as e:
@@ -214,6 +234,41 @@ def send_reviews_to_kafka(producer, reviews):
     producer.flush()
     logger.info(f"Successfully sent {len(reviews)} reviews to Kafka")
 
+
+def store_reviews_in_mongodb(mongo_client, reviews):
+    """Store the extracted reviews in MongoDB"""
+    if not mongo_client:
+        logger.error("MongoDB client is not available")
+        return
+    
+    try:
+        db = mongo_client[MONGODB_DATABASE]
+        collection = db[MONGODB_COLLECTION]
+        
+        # Create unique index on asin and review_id if not exists
+        collection.create_index([("asin", 1), ("review_id", 1)], unique=True)
+        
+        # Insert/update reviews with upsert
+        for review in reviews:
+            filter_query = {
+                "asin": review["asin"],
+                "review_id": review["review_id"],
+                "reviewer_name" : review["reviewer_name"],
+                "title": review["title"],
+                "rating": review["rating"],
+                "text" : review["text"],
+                "date": review["date"],
+                "helpful_votes": review["helpful_votes"],
+                "total_votes": review["total_votes"],
+                "scrape_time": review["scrape_time"]
+            }
+            update_result = collection.update_one(filter_query, {"$set": review}, upsert=True)
+            
+        logger.info(f"Successfully stored {len(reviews)} reviews in MongoDB")
+    except Exception as e:
+        logger.error(f"Error storing reviews in MongoDB: {str(e)}")
+
+
 def scrape_reviews():
     """Main function to scrape reviews and send to Kafka"""
     logger.info("Starting review scraping job")
@@ -224,6 +279,7 @@ def scrape_reviews():
     try:
         driver = setup_selenium()
         producer = setup_kafka_producer()
+        mongo_client = setup_mongodb()
         
         product_urls = extract_products(driver)
         logger.info(f"Found {len(product_urls)} products to scrape")
@@ -231,7 +287,12 @@ def scrape_reviews():
         for product_info in product_urls:
             reviews = extract_reviews(driver, product_info)
             if reviews:
+                # Send to Kafka
                 send_reviews_to_kafka(producer, reviews)
+                
+                # Store in MongoDB
+                store_reviews_in_mongodb(mongo_client, reviews)
+
             time.sleep(random.uniform(2, 4))
             
     except Exception as e:

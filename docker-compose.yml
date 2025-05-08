@@ -257,8 +257,8 @@ services:
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094
       - KAFKA_TOPIC=amazon-reviews-raw
-      - AMAZON_EMAIL=${AMAZON_EMAIL}
-      - AMAZON_PASSWORD=${AMAZON_PASSWORD}
+      - MONGODB_URI=mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin
+      - MONGODB_DATABASE=amazon_reviews
       - PYTHONUNBUFFERED=1
     volumes:
       - ./collector-service:/app
