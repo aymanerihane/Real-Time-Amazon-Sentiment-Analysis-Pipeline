@@ -208,30 +208,30 @@ services:
 #  MODEL TRAINNER&PREDICTOR
 ##############################
 
-  # ml-service:
-  #   build:
-  #     context: ./ml-service
-  #     dockerfile: Dockerfile
-  #   container_name: ml-service
-  #   restart: always
-  #   volumes:
-  #     - ml_data:/app/data
-  #     - ml_data:/app/resources
-  #     - ml_data:/app/results
-  #   depends_on:
-  #     - kafka1
-  #     - kafka2
-  #     - spark-master
-  #   environment:
-  #     - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094
-  #     - KAFKA_INPUT_TOPIC=amazon-reviews-raw
-  #     - KAFKA_OUTPUT_TOPIC=sentiment-results
-  #     - SPARK_MASTER_URL=spark://spark-master:7077
-  #     - DATA_PATH=/app/data/Data.json
-  #     - MODEL_PATH=/app/resources/sentiment_model_sklearn.pkl
-  #     - RESULTS_PATH=/app/results
-  #   networks:
-  #     - kafka-net
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: ml-service
+    restart: always
+    volumes:
+      - ml_data:/app/data
+      - ml_data:/app/resources
+      - ml_data:/app/results
+    depends_on:
+      - kafka1
+      - kafka2
+      - spark-master
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094
+      - KAFKA_INPUT_TOPIC=amazon-reviews-raw
+      - KAFKA_OUTPUT_TOPIC=sentiment-results
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - DATA_PATH=/app/data/Data.json
+      - MODEL_PATH=/app/resources/sentiment_model_sklearn.pkl
+      - RESULTS_PATH=/app/results
+    networks:
+      - kafka-net
 
 
 ##############################
