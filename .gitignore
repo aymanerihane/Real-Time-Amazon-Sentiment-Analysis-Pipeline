@@ -5,6 +5,7 @@
 ./collector-service/logs/
 data/
 
+backend-service/__pycache__/
 
 # Vite/React build and dependencies
 front-service/dist/
