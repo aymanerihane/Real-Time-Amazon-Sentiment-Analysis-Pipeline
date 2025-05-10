@@ -4,8 +4,8 @@ import json
 import logging
 import pickle
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, pandas_udf, current_timestamp
-from pyspark.sql.types import StructType, StructField, StringType, FloatType, BooleanType, StructType, StructField,IntegerType
+from pyspark.sql.functions import col, from_json, pandas_udf, current_timestamp, lit
+from pyspark.sql.types import StructType, StructField, StringType, FloatType, StructType, StructField
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
@@ -80,10 +80,11 @@ def get_review_schema():
         StructField("overall", FloatType(), True),
         StructField("reviewer_name", StringType(), True),
         StructField("date", StringType(), True),
-        StructField("helpful_votes",IntegerType(), True),
-        StructField("total_votes", IntegerType(), True),
+        StructField("helpful_votes", StringType(), True),
+        StructField("total_votes", StringType(), True),
         StructField("scrape_time", StringType(), True),
     ])
+
 def get_output_schema():
     """Define the schema for output"""
     return StructType([
@@ -94,11 +95,10 @@ def get_output_schema():
         StructField("overall", FloatType(), True),
         StructField("reviewer_name", StringType(), True),
         StructField("date", StringType(), True),
-        StructField("helpful_votes",IntegerType(), True),
-        StructField("total_votes", IntegerType(), True),
+        StructField("helpful_votes", StringType(), True),
+        StructField("total_votes", StringType(), True),
         StructField("scrape_time", StringType(), True),
-        StructField("sentiment", FloatType(), True),
-        StructField("sentiment_score", FloatType(), True),
+        StructField("sentiment", StringType(), True),
         StructField("processed_at", StringType(), True)
     ])
 
@@ -117,37 +117,26 @@ def process_reviews_with_spark(spark_session, df, model):
         logger.error("No model available for sentiment analysis")
         return df
     
-    # Define pandas UDF for sentiment analysis
-    @pandas_udf(StructType([
-        StructField("sentiment", FloatType(), True),
-        StructField("sentiment_score", FloatType(), True)
-    ]))
-    def predict_sentiment_batch(texts: pd.Series) -> pd.DataFrame:
-        # Preprocess texts
-        processed_texts = texts.apply(preprocess_text)
-        
-        # Make predictions
-        predictions = model.predict(processed_texts)
-        probabilities = model.predict_proba(processed_texts)
-        
-        # Get confidence scores
-        confidence_scores = np.max(probabilities, axis=1)
-        
-        return pd.DataFrame({
-            'sentiment': predictions.astype(float),
-            'sentiment_score': confidence_scores.astype(float)
-        })
+    # Define a regular UDF for sentiment prediction
+    def predict_sentiment(text):
+        try:
+            if not isinstance(text, str):
+                return "neutral"
+            processed_text = preprocess_text(text)
+            prediction = model.predict([processed_text])[0]
+            return prediction
+        except Exception as e:
+            logger.error(f"Error in predict_sentiment: {str(e)}")
+            return "neutral"
     
-    # Apply sentiment analysis
-    result_df = df.withColumn("sentiment_result", predict_sentiment_batch(col("reviewText")))
-    result_df = result_df.withColumn("sentiment", col("sentiment_result.sentiment"))
-    result_df = result_df.withColumn("sentiment_score", col("sentiment_result.sentiment_score"))
+    # Register the UDF
+    predict_sentiment_udf = spark_session.udf.register("predict_sentiment", predict_sentiment, StringType())
+    
+    # Apply the UDF to get sentiment
+    result_df = df.withColumn("sentiment", predict_sentiment_udf(col("reviewText")))
     
     # Add processing timestamp
-    result_df = result_df.withColumn("processed_at", current_timestamp())
-    
-    # Drop the intermediate column
-    result_df = result_df.drop("sentiment_result")
+    result_df = result_df.withColumn("processed_at", current_timestamp().cast(StringType()))
     
     return result_df
 
@@ -156,8 +145,9 @@ def main():
     logger.info("ML Service starting...")
     
     try:
-        # Load the scikit-learn model
+        # Load the scikit-learn model to verify it works
         model = load_model()
+        logger.info("Model loaded successfully")
         
         # Initialize Spark session with additional configurations
         spark = SparkSession.builder \
@@ -199,23 +189,26 @@ def main():
         # Process the stream with sentiment analysis
         def process_batch(batch_df, batch_id):
             """Process each batch of streaming data"""
-            if batch_df.count() > 0:
-                logger.info(f"Processing batch {batch_id} with {batch_df.count()} reviews")
-                
-                # Process reviews with sentiment analysis
-                processed_df = process_reviews_with_spark(spark, batch_df, model)
-                
-                # Send results back to Kafka with all fields
-                processed_df.selectExpr(
-                    "CAST(reviewerID AS STRING) AS key",
-                    "to_json(struct(reviewerID, asin, title, reviewText, overall, reviewer_name, date, helpful_votes, total_votes, scrape_time, sentiment, sentiment_score, processed_at)) AS value"
-                ).write \
-                    .format("kafka") \
-                    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
-                    .option("topic", KAFKA_OUTPUT_TOPIC) \
-                    .save()
+            try:
+                if batch_df.count() > 0:
+                    logger.info(f"Processing batch {batch_id} with {batch_df.count()} reviews")
                     
-                logger.info(f"Completed processing batch {batch_id}")
+                    # Process reviews with sentiment analysis
+                    processed_df = process_reviews_with_spark(spark, batch_df, model)
+                    
+                    # Send results back to Kafka with all fields
+                    processed_df.selectExpr(
+                        "CAST(reviewerID AS STRING) AS key",
+                        "to_json(struct(reviewerID, asin, title, reviewText, overall, reviewer_name, date, helpful_votes, total_votes, scrape_time, sentiment, processed_at)) AS value"
+                    ).write \
+                        .format("kafka") \
+                        .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+                        .option("topic", KAFKA_OUTPUT_TOPIC) \
+                        .save()
+                        
+                    logger.info(f"Completed processing batch {batch_id}")
+            except Exception as e:
+                logger.error(f"Error processing batch {batch_id}: {str(e)}")
         
         # Start the streaming query with foreachBatch
         query = parsed_df \
@@ -240,4 +233,4 @@ def main():
             logger.info("Spark session stopped")
 
 if __name__ == "__main__":
-    main() 
+    main()

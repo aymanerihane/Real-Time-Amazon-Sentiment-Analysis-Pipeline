@@ -13,26 +13,13 @@ RUN apt-get update && \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
+# Create necessary directories
+RUN mkdir -p /app/data /app/resources /app/results
+
 # Copy requirements and install Python packages
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt && \
     python3 -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('omw-1.4')"
-
-
-
-WORKDIR /app
-
-# Install only runtime dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    python3 \
-    python3-pip \
-    netcat-traditional \
-    procps \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create necessary directories
-RUN mkdir -p /app/data /app/resources /app/results
 
 # Copy application files
 COPY train_sklearn_model.py /app/

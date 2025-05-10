@@ -16,8 +16,6 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 import re
 import logging
-import seaborn as sns
-import matplotlib.pyplot as plt
 import os
 import sys
 
@@ -118,12 +116,13 @@ def load_and_preprocess_data(file_path):
         df['processed_text'] = df['combined_text'].apply(preprocess_text)
         
         # Create sentiment labels (rating > 3 is positive)
-        df['sentiment'] = (df['overall'] > 3).astype(int)
+        df['sentiment'] = df['overall'].apply(lambda x: 'positive' if x > 3 else 'negative' if x < 3 else 'neutral')
         
         # Log data distribution
         logger.info(f"Total reviews: {len(df)}")
-        logger.info(f"Positive reviews: {df['sentiment'].sum()}")
-        logger.info(f"Negative reviews: {len(df) - df['sentiment'].sum()}")
+        logger.info(f"Positive reviews: {len(df[df['sentiment'] == 'positive'])}")
+        logger.info(f"Negative reviews: {len(df[df['sentiment'] == 'negative'])}")
+        logger.info(f"Neutral reviews: {len(df[df['sentiment'] == 'neutral'])}")
         
         return df
     
@@ -187,14 +186,7 @@ def train_and_evaluate_models(X_train, X_test, y_train, y_test):
     
     # Plot confusion matrix for best model
     best_name = max(results, key=lambda x: results[x]['accuracy'])
-    cm = confusion_matrix(results[best_name]['true_values'], 
-                         results[best_name]['predictions'])
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
-    plt.title(f'Confusion Matrix - {best_name}')
-    plt.ylabel('True Label')
-    plt.xlabel('Predicted Label')
-    plt.savefig(os.path.join(RESULTS_DIR, 'confusion_matrix.png'))
+    
     
     # Save detailed results
     with open(os.path.join(RESULTS_DIR, 'training_results.txt'), 'w') as f:

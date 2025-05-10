@@ -72,8 +72,7 @@ class SentimentAnalysis(BaseModel):
     helpful_votes: int
     total_votes: int
     scrape_time: str
-    sentiment: float
-    sentiment_score: float
+    sentiment: str
     processed_at: str
 
 # # Kafka consumer for raw reviews
