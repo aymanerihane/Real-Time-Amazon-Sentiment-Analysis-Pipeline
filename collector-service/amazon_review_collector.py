@@ -30,7 +30,6 @@ USER_AGENTS = [
 log_dir = Path("/data/logs")
 log_dir.mkdir(parents=True, exist_ok=True)
 
-
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -235,7 +234,6 @@ def send_reviews_to_kafka(producer, reviews):
     
     producer.flush()
     logger.info(f"Successfully sent {len(reviews)} reviews to Kafka")
-
 
 def store_reviews_in_mongodb(mongo_client, reviews):
     """Store the extracted reviews in MongoDB"""

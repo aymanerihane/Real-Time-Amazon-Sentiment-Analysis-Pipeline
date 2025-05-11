@@ -2,6 +2,7 @@
 
 # Data directory
 ./collector-service/data/
+
 ./collector-service/logs/
 data/
 
