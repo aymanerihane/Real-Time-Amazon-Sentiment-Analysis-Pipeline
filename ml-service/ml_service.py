@@ -13,6 +13,7 @@ from nltk.stem import WordNetLemmatizer
 import re
 import pandas as pd
 import numpy as np
+import joblib
 
 # Configure logging
 logging.basicConfig(
@@ -105,8 +106,9 @@ def get_output_schema():
 def load_model():
     """Load the trained scikit-learn model"""
     try:
-        with open(MODEL_PATH, 'rb') as f:
-            return pickle.load(f)
+        model = joblib.load(MODEL_PATH)
+        logger.info("Model loaded successfully")
+        return model
     except Exception as e:
         logger.error(f"Error loading model: {str(e)}")
         raise
@@ -117,28 +119,39 @@ def process_reviews_with_spark(spark_session, df, model):
         logger.error("No model available for sentiment analysis")
         return df
     
-    # Define a regular UDF for sentiment prediction
-    def predict_sentiment(text):
-        try:
-            if not isinstance(text, str):
-                return "neutral"
-            processed_text = preprocess_text(text)
-            prediction = model.predict([processed_text])[0]
-            return prediction
-        except Exception as e:
-            logger.error(f"Error in predict_sentiment: {str(e)}")
-            return "neutral"
+    # Get the original schema
+    original_schema = df.schema
     
-    # Register the UDF
-    predict_sentiment_udf = spark_session.udf.register("predict_sentiment", predict_sentiment, StringType())
+    # Convert to pandas for processing
+    pandas_df = df.toPandas()
     
-    # Apply the UDF to get sentiment
-    result_df = df.withColumn("sentiment", predict_sentiment_udf(col("reviewText")))
-    
-    # Add processing timestamp
-    result_df = result_df.withColumn("processed_at", current_timestamp().cast(StringType()))
-    
-    return result_df
+    try:
+        # Process reviews in pandas
+        processed_texts = pandas_df['reviewText'].apply(preprocess_text)
+        
+        # Ensure model is loaded in the current process
+        if not hasattr(model, 'predict'):
+            model = load_model()
+        
+        predictions = model.predict(processed_texts)
+        
+        # Add predictions back to pandas DataFrame
+        pandas_df['sentiment'] = predictions
+        pandas_df['processed_at'] = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Convert back to Spark DataFrame using the original schema plus new columns
+        result_df = spark_session.createDataFrame(
+            pandas_df,
+            schema=original_schema.add("sentiment", StringType(), True)
+                                .add("processed_at", StringType(), True)
+        )
+        
+        return result_df
+    except Exception as e:
+        logger.error(f"Error in process_reviews_with_spark: {str(e)}")
+        # Return original DataFrame with neutral sentiment in case of error
+        return df.withColumn("sentiment", lit("neutral")) \
+                .withColumn("processed_at", current_timestamp().cast(StringType()))
 
 def main():
     """Main function for the ML service"""

@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # Configuration
 MAX_RETRIES=30
 RETRY_COUNT=0
@@ -7,7 +8,11 @@ SERVICE_RETRY_INTERVAL=30
 DATA_DIR="/app/data"
 RESOURCES_DIR="/app/resources"
 MODEL_PATH="$RESOURCES_DIR/sentiment_model_sklearn.pkl"
-PYTHON_CMD="python3"  # Use python3 explicitly
+PYTHON_CMD="python3"  # Use generic python3
+
+# Export environment variables for PySpark
+export PYSPARK_PYTHON=python3
+export PYSPARK_DRIVER_PYTHON=python3
 
 # Function to log messages with timestamp
 log() {
@@ -48,6 +53,12 @@ check_data_file() {
 while true; do
     log "Starting service check cycle..."
    
+    # Display Python version for debugging
+    log "Python version in container:"
+    $PYTHON_CMD --version
+    log "PYSPARK_PYTHON: $PYSPARK_PYTHON"
+    log "PYSPARK_DRIVER_PYTHON: $PYSPARK_DRIVER_PYTHON"
+    
     # Check Kafka services
     if ! wait_for_service kafka1 9092 "Kafka1"; then
         log "Kafka1 check failed. Retrying in $SERVICE_RETRY_INTERVAL seconds..."
@@ -71,10 +82,10 @@ while true; do
     # Check if model exists, if not train it
     if [ ! -f "$MODEL_PATH" ]; then
         log "Model not found at $MODEL_PATH. Starting model training..."
-        
+       
         # Create necessary directories
         mkdir -p "$RESOURCES_DIR"
-        
+       
         if ! $PYTHON_CMD train_sklearn_model.py; then
             log "ERROR: Training failed. Retrying in $SERVICE_RETRY_INTERVAL seconds..."
             sleep $SERVICE_RETRY_INTERVAL
