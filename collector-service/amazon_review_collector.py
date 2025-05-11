@@ -18,9 +18,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
-# MongoDB Connection
-from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+
 
 # Basic user agents
 USER_AGENTS = [
@@ -30,7 +28,8 @@ USER_AGENTS = [
 
 # Setup logging
 log_dir = Path("/data/logs")
-log_dir.mkdir(parents=True,exist_ok=True)
+log_dir.mkdir(parents=True, exist_ok=True)
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,6 +50,7 @@ MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://root:example@mongodb:27017/ama
 MONGODB_DATABASE = os.getenv('MONGODB_DATABASE', 'amazon_reviews')
 MONGODB_COLLECTION = os.getenv('MONGODB_COLLECTION', 'reviews')
 
+
 def setup_mongodb():
     """Create and return a MongoDB client instance"""
     try:
@@ -62,6 +62,7 @@ def setup_mongodb():
     except (ConnectionFailure, ServerSelectionTimeoutError) as e:
         logger.error(f"MongoDB connection error: {str(e)}")
         return None
+
 
 def setup_selenium():
     """Set up Selenium WebDriver with Chrome"""
@@ -205,8 +206,8 @@ def extract_reviews(driver, product_info):
                     "asin": asin,
                     "review_id": review_id,
                     "title": title,
-                    "rating": rating,
-                    "text": text,
+                    "overall": rating,
+                    "reviewText": text,
                     "date": date,
                     "helpful_votes": helpful[0],
                     "total_votes": helpful[1],
@@ -241,7 +242,6 @@ def store_reviews_in_mongodb(mongo_client, reviews):
     if not mongo_client:
         logger.error("MongoDB client is not available")
         return
-    
 
     try:
         db = mongo_client[MONGODB_DATABASE]
@@ -257,8 +257,8 @@ def store_reviews_in_mongodb(mongo_client, reviews):
                 "review_id": review["review_id"],
                 "reviewer_name" : review["reviewer_name"],
                 "title": review["title"],
-                "rating": review["rating"],
-                "text" : review["text"],
+                "overall": review["overall"],
+                "reviewText" : review["reviewText"],
                 "date": review["date"],
                 "helpful_votes": review["helpful_votes"],
                 "total_votes": review["total_votes"],
@@ -291,9 +291,6 @@ def scrape_reviews():
             if reviews:
                 # Send to Kafka
                 send_reviews_to_kafka(producer, reviews)
-                
-                # Store in MongoDB
-                store_reviews_in_mongodb(mongo_client, reviews)
 
             time.sleep(random.uniform(2, 4))
             

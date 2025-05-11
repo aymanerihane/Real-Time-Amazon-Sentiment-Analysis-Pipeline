@@ -1,4 +1,8 @@
 services:
+
+##############################
+#           KAFKA
+##############################
   kafka1:
     image: bitnami/kafka:latest
     container_name: kafka1
@@ -124,6 +128,10 @@ services:
       retries: 5
       start_period: 30s
 
+##############################
+#          MongoDB
+##############################
+
   # MongoDB for storing processed data
   mongodb:
     image: mongo:6.0
@@ -196,17 +204,57 @@ services:
       retries: 5
       start_period: 30s
 
+##############################
+#  MODEL TRAINNER&PREDICTOR
+##############################
+
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: ml-service
+    restart: always
+    volumes:
+      - ml_data:/app/data
+      - ml_data:/app/resources
+      - ml_data:/app/results
+    depends_on:
+      - kafka1
+      - kafka2
+      - spark-master
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094
+      - KAFKA_INPUT_TOPIC=amazon-reviews-raw
+      - KAFKA_OUTPUT_TOPIC=sentiment-results
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - DATA_PATH=/app/data/Data.json
+      - MODEL_PATH=/app/resources/sentiment_model_sklearn.pkl
+      - RESULTS_PATH=/app/results
+      - PYSPARK_PYTHON=/usr/local/bin/python3.11
+      - PYSPARK_DRIVER_PYTHON=/usr/local/bin/python3.11
+
+    networks:
+      - kafka-net
+
+
+##############################
+#           SPARK
+##############################
+
+
   # Spark Master
   spark-master:
     image: bitnami/spark:3.4.1
     hostname: spark-master
     container_name: spark-master
     environment:
-      - SPARK_MODE=master
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
+    - SPARK_MODE=master
+    - SPARK_RPC_AUTHENTICATION_ENABLED=no
+    - SPARK_RPC_ENCRYPTION_ENABLED=no
+    - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+    - SPARK_SSL_ENABLED=no
+    - PYSPARK_PYTHON=/opt/bitnami/python/bin/python3.11
+    - PYSPARK_DRIVER_PYTHON=/opt/bitnami/python/bin/python3.11
     ports:
       - "8080:8080"
       - "7077:7077"
@@ -215,7 +263,7 @@ services:
     networks:
       - kafka-net
 
-  # Spark Worker
+  # Spark Worker with explicit Python version
   spark-worker:
     image: bitnami/spark:3.4.1
     hostname: spark-worker
@@ -231,12 +279,18 @@ services:
       - SPARK_RPC_ENCRYPTION_ENABLED=no
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
+      - PYSPARK_PYTHON=/opt/bitnami/python/bin/python3.11
+      - PYSPARK_DRIVER_PYTHON=/opt/bitnami/python/bin/python3.11
     volumes:
       - spark_data:/bitnami/spark
     networks:
       - kafka-net
 
-  # Collector Service - scrapes Amazon reviews and sends to Kafka
+##############################
+#     Reviews Collector
+##############################
+
+  # Collector Service - scrapes Amazon reviews and sends to Kafka and mongodb
   collector-service:
     build:
       context: ./collector-service
@@ -291,48 +345,36 @@ services:
       retries: 3
       start_period: 30s
 
-  # Trainer Service - processes reviews with Spark Streaming for sentiment analysis
-  # trainer-service:
-  #   build:
-  #     context: ./trainer-service
-  #     dockerfile: Dockerfile
-  #   container_name: trainer-service
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - kafka1
-  #     - kafka2
-  #     - spark-master
-  #     - mongodb
-  #   environment:
-  #     - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9093
-  #     - KAFKA_INPUT_TOPIC=amazon-reviews-raw
-  #     - KAFKA_OUTPUT_TOPIC=sentiment-results
-  #     - SPARK_MASTER=spark://spark-master:7077
-  #     - MONGODB_URI=mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin
-  #   volumes:
-  #     - ./trainer-service:/app
-  #     - trainer_data:/data
+##############################
+#        WEB SERVICE
+##############################
 
-  # Web Service - provides API and web interface for visualization
-  # web-service:
-  #   build:
-  #     context: ./web-service
-  #     dockerfile: Dockerfile
-  #   container_name: web-service
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8000:8000"
-  #   depends_on:
-  #     - mongodb
-  #     - kafka1
-  #     - kafka2
-  #   environment:
-  #     - MONGODB_URI=mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin
-  #     - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9093
-  #     - KAFKA_TOPIC=sentiment-results
-  #   volumes:
-  #     - ./web-service:/app
-  #     - web_data:/data
+  backend-service:
+    build: ./backend-service
+    container_name: backend-service
+    ports:
+      - "8006:8006"
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      mongodb:
+        condition: service_healthy
+      mongodb-init:
+        condition: service_completed_successfully
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094
+      # - KAFKA_BOOTSTRAP_SERVERS_1=kafka1:9092
+      # - KAFKA_BOOTSTRAP_SERVERS_2=kafka2:9094
+      - KAFKA_TOPIC_1=amazon-reviews-raw
+      - KAFKA_TOPIC_2=sentiment-results
+      - MONGODB_URI=mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin
+      - MONGODB_DATABASE=amazon_reviews
+    volumes:
+      - ./backend-service:/app
+      - backend_data:/data
+    networks:
+      - kafka-net
+
 
   # Frontend Service
   frontend-service:
@@ -354,7 +396,9 @@ services:
 
   # Add this to your volumes section at the bottom
   
-
+##############################
+#         Volumes
+##############################
 volumes:
   frontend_data:
   kafka1_data:
@@ -363,7 +407,12 @@ volumes:
   spark_data:
   collector_data:
   trainer_data:
-  web_data:
+  backend_data:
+  ml_data:
+
+##############################
+#         NETWORKS
+##############################
 
 networks:
   kafka-net:

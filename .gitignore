@@ -6,6 +6,9 @@
 data/
 
 
+backend-service/__pycache__/
+
+
 # Vite/React build and dependencies
 front-service/dist/
 front-service/node_modules/

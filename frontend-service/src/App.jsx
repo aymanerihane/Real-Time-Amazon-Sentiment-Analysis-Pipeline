@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import './App.css';
 import { Chart as ChartJS, registerables } from 'chart.js';
 import { DateTime } from 'luxon';
-import { generateSampleReview, sampleASINs } from './utils/dataUtils';
+import { connectWebSocket, addMessageHandler, removeMessageHandler, processReviewData } from './utils/dataUtils';
 ChartJS.register(...registerables);
 
 import Header from './components/Header';
@@ -26,6 +26,8 @@ export default function App() {
   };
 
   const addReviewToFeed = (review) => {
+    if (!review) return;
+    
     if (review.sentiment === 'positive') {
       setPositiveCount(prev => prev + 1);
     } else if (review.sentiment === 'neutral') {
@@ -41,14 +43,26 @@ export default function App() {
   );
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (!isPaused) {
-        const review = generateSampleReview();
-        addReviewToFeed(review);
-      }
-    }, 3000);
+    // Connect to WebSocket when component mounts
+    connectWebSocket();
 
-    return () => clearInterval(interval);
+    // Handler for incoming messages
+    const handleMessage = (message) => {
+      if (!isPaused && (message.type === 'new_review' || message.type === 'new_sentiment')) {
+        const processedReview = processReviewData(message);
+        if (processedReview) {
+          addReviewToFeed(processedReview);
+        }
+      }
+    };
+
+    // Add message handler
+    addMessageHandler(handleMessage);
+
+    // Cleanup when component unmounts
+    return () => {
+      removeMessageHandler(handleMessage);
+    };
   }, [isPaused]);
 
   return (
