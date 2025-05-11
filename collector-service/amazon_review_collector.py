@@ -19,6 +19,7 @@ from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 
+
 # Basic user agents
 USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -28,6 +29,7 @@ USER_AGENTS = [
 # Setup logging
 log_dir = Path("/data/logs")
 log_dir.mkdir(parents=True, exist_ok=True)
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -47,6 +49,19 @@ KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'amazon-reviews-raw')
 MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin')
 MONGODB_DATABASE = os.getenv('MONGODB_DATABASE', 'amazon_reviews')
 MONGODB_COLLECTION = os.getenv('MONGODB_COLLECTION', 'reviews')
+
+
+def setup_mongodb():
+    """Create and return a MongoDB client instance"""
+    try:
+        client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+        # Test the connection
+        client.admin.command('ping')
+        logger.info("Successfully connected to MongoDB")
+        return client
+    except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+        logger.error(f"MongoDB connection error: {str(e)}")
+        return None
 
 
 def setup_selenium():
@@ -227,7 +242,7 @@ def store_reviews_in_mongodb(mongo_client, reviews):
     if not mongo_client:
         logger.error("MongoDB client is not available")
         return
-    
+
     try:
         db = mongo_client[MONGODB_DATABASE]
         collection = db[MONGODB_COLLECTION]
@@ -266,6 +281,7 @@ def scrape_reviews():
     try:
         driver = setup_selenium()
         producer = setup_kafka_producer()
+        mongo_client = setup_mongodb()
         
         product_urls = extract_products(driver)
         logger.info(f"Found {len(product_urls)} products to scrape")
