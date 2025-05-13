@@ -235,12 +235,13 @@ def main():
         
         # Write results to both Kafka and MongoDB
         query = result_df \
+            .writeStream \
+            .foreachBatch(process_batch) \
             .selectExpr(
                 "CAST(reviewerID AS STRING) AS key",
                 "to_json(struct(*)) AS value"
             ) \
             .writeStream \
-            .foreachBatch(process_batch) \
             .format("kafka") \
             .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
             .option("topic", KAFKA_OUTPUT_TOPIC) \

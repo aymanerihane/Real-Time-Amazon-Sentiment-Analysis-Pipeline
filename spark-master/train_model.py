@@ -1,152 +1,257 @@
 #!/usr/bin/env python3
-import os
-import logging
+import json
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline as ImbPipeline
+import pickle
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 import re
-import joblib
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
-import json
+import logging
+import os
+import sys
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
-# Configuration
-MODEL_PATH = '/app/resources/sentiment_model_sklearn.pkl'
-DATA_PATH = '/app/data/Data.json'
+# Define paths
+DATA_DIR = '/app/data'
+RESOURCES_DIR = '/app/resources'
+RESULTS_DIR = '/app/results'
+DATA_FILE = os.path.join(DATA_DIR, 'Data.json')
+MODEL_FILE = os.path.join(RESOURCES_DIR, 'sentiment_model_sklearn.pkl')
 
-def preprocess_text(text):
-    """Preprocess text data"""
+# Create necessary directories
+os.makedirs(RESOURCES_DIR, exist_ok=True)
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
+def smooth_text(text):
+    """Apply text smoothing techniques"""
     if not isinstance(text, str):
         return ""
     
-    # Convert to lowercase and remove special characters
+    # Convert to lowercase
     text = text.lower()
+    
+    # Remove URLs
+    text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
+    
+    # Remove special characters and digits but keep important punctuation
     text = re.sub(r'[^a-zA-Z\s.,!?]', '', text)
+    
+    # Remove extra whitespace
     text = re.sub(r'\s+', ' ', text).strip()
     
-    # Tokenize and lemmatize
+    return text
+
+def preprocess_text(text):
+    """Preprocess text data with lemmatization"""
+    if not isinstance(text, str):
+        return ""
+    
+    # Apply text smoothing
+    text = smooth_text(text)
+    
+    # Tokenize
     tokens = word_tokenize(text)
+    
+    # Initialize lemmatizer
     lemmatizer = WordNetLemmatizer()
+    
+    # Remove stopwords and lemmatize
     stop_words = set(stopwords.words('english'))
-    tokens = [lemmatizer.lemmatize(token) for token in tokens if token not in stop_words and len(token) > 1]
+    tokens = [lemmatizer.lemmatize(token) for token in tokens if token not in stop_words]
+    
+    # Remove short tokens (length < 2)
+    tokens = [token for token in tokens if len(token) > 1]
     
     return ' '.join(tokens)
 
-def load_data():
-    """Load data from JSON file"""
+def load_and_preprocess_data(file_path):
+    """Load and preprocess the data"""
+    logger.info(f"Loading data from JSON file: {file_path}")
+    
+    if not os.path.exists(file_path):
+        logger.error(f"Data file not found at: {file_path}")
+        sys.exit(1)
+    
     try:
-        # Read the file line by line
-        data = []
-        with open(DATA_PATH, 'r', encoding='utf-8') as f:
+        # Read JSON file in chunks to handle large file
+        chunks = []
+        with open(file_path, 'r', encoding='utf-8') as f:
             for line in f:
-                line = line.strip()
-                if line:  # Skip empty lines
-                    try:
-                        data.append(json.loads(line))
-                    except json.JSONDecodeError as e:
-                        logger.warning(f"Skipping invalid JSON line: {str(e)}")
-                        continue
+                try:
+                    chunks.append(json.loads(line))
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Skipping invalid JSON line: {e}")
+                    continue
+        
+        if not chunks:
+            logger.error("No valid data found in the JSON file")
+            sys.exit(1)
         
         # Convert to DataFrame
-        df = pd.DataFrame(data)
-        logger.info(f"Successfully loaded {len(df)} records from {DATA_PATH}")
+        df = pd.DataFrame(chunks)
+        
+        # Keep only relevant columns
+        df = df[['reviewerID', 'asin', 'reviewText', 'overall', 'summary']]
+        
+        # Combine review text and summary for better context
+        df['combined_text'] = df['summary'] + ' ' + df['reviewText']
+        
+        # Preprocess text
+        logger.info("Preprocessing text data...")
+        df['processed_text'] = df['combined_text'].apply(preprocess_text)
+        
+        # Create sentiment labels (rating > 3 is positive)
+        df['sentiment'] = df['overall'].apply(lambda x: 'positive' if x > 3 else 'negative' if x < 3 else 'neutral')
+        
+        # Log data distribution
+        logger.info(f"Total reviews: {len(df)}")
+        logger.info(f"Positive reviews: {len(df[df['sentiment'] == 'positive'])}")
+        logger.info(f"Negative reviews: {len(df[df['sentiment'] == 'negative'])}")
+        logger.info(f"Neutral reviews: {len(df[df['sentiment'] == 'neutral'])}")
+        
         return df
+    
     except Exception as e:
         logger.error(f"Error loading data: {str(e)}")
-        raise
+        sys.exit(1)
 
-def train_model():
-    """Train the sentiment analysis model"""
+def train_and_evaluate_models(X_train, X_test, y_train, y_test):
+    """Train and evaluate different models"""
     models = {
         'LogisticRegression': LogisticRegression(max_iter=1000, C=1.0, class_weight='balanced'),
         'RandomForest': RandomForestClassifier(n_estimators=100, max_depth=10, class_weight='balanced'),
         'SVM': SVC(probability=True, kernel='linear', class_weight='balanced')
     }
     
-    try:
-        logger.info("Starting model training...")
-        # Load and preprocess data
-        df = load_data()
-        df['processed_text'] = df['reviewText'].apply(preprocess_text)
+    best_model = None
+    best_accuracy = 0
+    results = {}
+    
+    # Create TF-IDF vectorizer
+    tfidf = TfidfVectorizer(
+        max_features=5000,
+        min_df=5,
+        max_df=0.95,
+        ngram_range=(1, 2),
+        sublinear_tf=True
+    )
+    
+    # Transform training data
+    X_train_tfidf = tfidf.fit_transform(X_train)
+    X_test_tfidf = tfidf.transform(X_test)
+    
+    # Apply SMOTE to handle class imbalance
+    logger.info("Applying SMOTE to balance classes...")
+    smote = SMOTE(random_state=42)
+    X_train_resampled, y_train_resampled = smote.fit_resample(X_train_tfidf, y_train)
+    
+    # Log class distribution after SMOTE
+    unique, counts = np.unique(y_train_resampled, return_counts=True)
+    logger.info("Class distribution after SMOTE:")
+    for class_label, count in zip(unique, counts):
+        logger.info(f"{class_label}: {count}")
+    
+    for name, model in models.items():
+        logger.info(f"\nTraining {name}...")
         
-        # Convert ratings to sentiment labels
-        df['sentiment'] = df['overall'].apply(lambda x: 2 if x >= 4 else (0 if x <= 2 else 1))
+        # Train the model
+        model.fit(X_train_resampled, y_train_resampled)
+        
+        # Make predictions
+        y_pred = model.predict(X_test_tfidf)
+        
+        # Calculate accuracy
+        accuracy = accuracy_score(y_test, y_pred)
+        logger.info(f"{name} Accuracy: {accuracy:.4f}")
+        
+        # Print classification report
+        logger.info(f"\nClassification Report for {name}:")
+        logger.info(classification_report(y_test, y_pred))
+        
+        # Store results
+        results[name] = {
+            'model': model,
+            'vectorizer': tfidf,
+            'accuracy': accuracy,
+            'predictions': y_pred,
+            'true_values': y_test
+        }
+        
+        # Update best model
+        if accuracy > best_accuracy:
+            best_accuracy = accuracy
+            best_model = (model, tfidf)
+    
+    # Save detailed results
+    with open(os.path.join(RESULTS_DIR, 'training_results.txt'), 'w') as f:
+        f.write(f"Best Model: {max(results, key=lambda x: results[x]['accuracy'])}\n")
+        f.write(f"Best Accuracy: {best_accuracy:.4f}\n\n")
+        for name, result in results.items():
+            f.write(f"Model: {name}\n")
+            f.write(f"Accuracy: {result['accuracy']:.4f}\n")
+            f.write(classification_report(result['true_values'], result['predictions']))
+            f.write("\n" + "="*50 + "\n")
+    
+    return best_model, results
+
+def save_model(model, filepath):
+    """Save the trained model"""
+    try:
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, 'wb') as f:
+            pickle.dump(model, f)
+        logger.info(f"Model saved to {filepath}")
+    except Exception as e:
+        logger.error(f"Error saving model: {str(e)}")
+        sys.exit(1)
+
+def main():
+    try:
+        # Load and preprocess data
+        df = load_and_preprocess_data(DATA_FILE)
         
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
-            df['processed_text'], df['sentiment'], test_size=0.2, random_state=42
+            df['processed_text'],
+            df['sentiment'],
+            test_size=0.2,
+            random_state=42,
+            stratify=df['sentiment']  # Ensure balanced split
         )
         
-        # Vectorize text
-        vectorizer = TfidfVectorizer(max_features=5000)
-        X_train_vec = vectorizer.fit_transform(X_train)
-        X_test_vec = vectorizer.transform(X_test)
+        # Train and evaluate models
+        best_model, results = train_and_evaluate_models(X_train, X_test, y_train, y_test)
         
-        # Handle class imbalance
-        smote = SMOTE(random_state=42)
-        X_train_balanced, y_train_balanced = smote.fit_resample(X_train_vec, y_train)
+        # Save the best model
+        save_model(best_model, MODEL_FILE)
         
-        # Train and evaluate all models
-        best_model = None
-        best_score = 0
-        best_model_name = None
+        logger.info("Training completed successfully!")
+        logger.info(f"Model saved to {MODEL_FILE}")
+        logger.info(f"Results saved to {RESULTS_DIR}/")
         
-        for model_name, model in models.items():
-            logger.info(f"Training {model_name}...")
-            
-            # Train model
-            model.fit(X_train_balanced, y_train_balanced)
-            
-            # Evaluate model
-            y_pred = model.predict(X_test_vec)
-            score = model.score(X_test_vec, y_test)
-            
-            logger.info(f"{model_name} accuracy: {score:.4f}")
-            logger.info(f"\nClassification Report for {model_name}:\n{classification_report(y_test, y_pred)}")
-            
-            # Update best model if current model is better
-            if score > best_score:
-                best_score = score
-                best_model = model
-                best_model_name = model_name
-        
-        logger.info(f"Best model: {best_model_name} with accuracy: {best_score:.4f}")
-        
-        # Save best model and vectorizer
-        os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-        joblib.dump((best_model, vectorizer), MODEL_PATH)
-        logger.info(f"Best model ({best_model_name}) saved successfully to {MODEL_PATH}")
-        
-        return True
+        # Exit with success
+        sys.exit(0)
         
     except Exception as e:
-        logger.error(f"Error in model training: {str(e)}")
-        return False
-
-def main():
-    """Main function"""
-    try:
-        # Train model
-        if not train_model():
-            logger.error("Model training failed")
-            return
-        
-        logger.info("Model training completed successfully")
-        
-    except Exception as e:
-        logger.error("Error in main process: %s", str(e))
-        raise
+        logger.error(f"Error in main process: {str(e)}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main() 

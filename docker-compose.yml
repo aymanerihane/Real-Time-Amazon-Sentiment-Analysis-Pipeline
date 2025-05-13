@@ -282,10 +282,28 @@ services:
       - SPARK_SSL_ENABLED=no
       - PYSPARK_PYTHON=/opt/bitnami/python/bin/python3.11
       - PYSPARK_DRIVER_PYTHON=/opt/bitnami/python/bin/python3.11
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_WORKER_CLEANUP_ENABLED=true
+      - SPARK_WORKER_RETRY_WAIT=10
+      - SPARK_WORKER_MAX_RETRIES=30
     volumes:
       - spark_data:/bitnami/spark
     networks:
       - kafka-net
+    command: >
+      bash -c "
+        echo 'Waiting for Spark master to be ready...' &&
+        sleep 20 &&
+        echo 'Starting Spark worker...' &&
+        /opt/bitnami/spark/sbin/start-worker.sh spark://spark-master:7077
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
 ##############################
 #     Reviews Collector
@@ -295,7 +313,6 @@ services:
   collector-service:
     build:
       context: ./collector-service
-      dockerfile: Dockerfile
     container_name: collector-service
     restart: unless-stopped
     depends_on:

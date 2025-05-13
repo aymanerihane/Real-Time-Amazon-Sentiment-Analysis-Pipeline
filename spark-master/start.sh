@@ -54,6 +54,15 @@ check_model_file() {
     return 0
 }
 
+# Start Spark master in background
+log "Starting Spark master..."
+/opt/bitnami/spark/sbin/start-master.sh &
+SPARK_MASTER_PID=$!
+
+# Wait for Spark master to be ready
+log "Waiting for Spark master to be ready..."
+wait_for_service "localhost" "8080" "Spark Master"
+
 # Loop for Kafka services
 while true; do
     if wait_for_service "kafka1" 9092 "Kafka 1" && wait_for_service "kafka2" 9094 "Kafka 2"; then
