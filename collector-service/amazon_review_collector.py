@@ -18,6 +18,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 
 
 # Basic user agents
@@ -313,4 +315,5 @@ def main():
         time.sleep(60)
 
 if __name__ == "__main__":
-    main()
+    while True:
+        main()

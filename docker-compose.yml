@@ -208,33 +208,33 @@ services:
 #  MODEL TRAINNER&PREDICTOR
 ##############################
 
-  ml-service:
-    build:
-      context: ./ml-service
-      dockerfile: Dockerfile
-    container_name: ml-service
-    restart: always
-    volumes:
-      - ml_data:/app/data
-      - ml_data:/app/resources
-      - ml_data:/app/results
-    depends_on:
-      - kafka1
-      - kafka2
-      - spark-master
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094
-      - KAFKA_INPUT_TOPIC=amazon-reviews-raw
-      - KAFKA_OUTPUT_TOPIC=sentiment-results
-      - SPARK_MASTER_URL=spark://spark-master:7077
-      - DATA_PATH=/app/data/Data.json
-      - MODEL_PATH=/app/resources/sentiment_model_sklearn.pkl
-      - RESULTS_PATH=/app/results
-      - PYSPARK_PYTHON=/usr/local/bin/python3.11
-      - PYSPARK_DRIVER_PYTHON=/usr/local/bin/python3.11
+  # ml-service:
+  #   build:
+  #     context: ./ml-service
+  #     dockerfile: Dockerfile
+  #   container_name: ml-service
+  #   restart: always
+  #   volumes:
+  #     - ml_data:/app/data
+  #     - ml_data:/app/resources
+  #     - ml_data:/app/results
+  #   depends_on:
+  #     - kafka1
+  #     - kafka2
+  #     - spark-master
+  #   environment:
+  #     - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094
+  #     - KAFKA_INPUT_TOPIC=amazon-reviews-raw
+  #     - KAFKA_OUTPUT_TOPIC=sentiment-results
+  #     - SPARK_MASTER_URL=spark://spark-master:7077
+  #     - DATA_PATH=/app/data/Data.json
+  #     - MODEL_PATH=/app/resources/sentiment_model_sklearn.pkl
+  #     - RESULTS_PATH=/app/results
+  #     - PYSPARK_PYTHON=/usr/local/bin/python3.11
+  #     - PYSPARK_DRIVER_PYTHON=/usr/local/bin/python3.11
 
-    networks:
-      - kafka-net
+  #   networks:
+  #     - kafka-net
 
 
 ##############################
@@ -244,7 +244,8 @@ services:
 
   # Spark Master
   spark-master:
-    image: bitnami/spark:3.4.1
+    build:
+      context: ./spark-master
     hostname: spark-master
     container_name: spark-master
     environment:
@@ -349,50 +350,48 @@ services:
 #        WEB SERVICE
 ##############################
 
-  backend-service:
-    build: ./backend-service
-    container_name: backend-service
-    ports:
-      - "8006:8006"
-    depends_on:
-      kafka-init:
-        condition: service_completed_successfully
-      mongodb:
-        condition: service_healthy
-      mongodb-init:
-        condition: service_completed_successfully
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094
-      # - KAFKA_BOOTSTRAP_SERVERS_1=kafka1:9092
-      # - KAFKA_BOOTSTRAP_SERVERS_2=kafka2:9094
-      - KAFKA_TOPIC_1=amazon-reviews-raw
-      - KAFKA_TOPIC_2=sentiment-results
-      - MONGODB_URI=mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin
-      - MONGODB_DATABASE=amazon_reviews
-    volumes:
-      - ./backend-service:/app
-      - backend_data:/data
-    networks:
-      - kafka-net
+  # backend-service:
+  #   build: ./backend-service
+  #   container_name: backend-service
+  #   ports:
+  #     - "8006:8006"
+  #   depends_on:
+  #     kafka-init:
+  #       condition: service_completed_successfully
+  #     mongodb:
+  #       condition: service_healthy
+  #     mongodb-init:
+  #       condition: service_completed_successfully
+  #   environment:
+  #     - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094
+  #     - KAFKA_TOPIC_1=amazon-reviews-raw
+  #     - KAFKA_TOPIC_2=sentiment-results
+  #     - MONGODB_URI=mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin
+  #     - MONGODB_DATABASE=amazon_reviews
+  #   volumes:
+  #     - ./backend-service:/app
+  #     - backend_data:/data
+  #   networks:
+  #     - kafka-net
 
 
-  # Frontend Service
-  frontend-service:
-    # Use a development-focused configuration
-    container_name: frontend-service
-    build:
-      context: ./frontend-service
-      dockerfile: Dockerfile.dev  # Use a dev-specific Dockerfile
-    ports:
-      - "5173:5173"  # Vite dev server port
-    volumes:
-      - ./frontend-service:/app  # Mount source code for hot reload
-      - /app/node_modules  # Prevent overriding container node_modules
-    environment:
-      - VITE_DEV_MODE=true
-      - CHOKIDAR_USEPOLLING=true  # Helps with hot reload in Docker
-    networks:
-      - kafka-net
+  # # Frontend Service
+  # frontend-service:
+  #   # Use a development-focused configuration
+  #   container_name: frontend-service
+  #   build:
+  #     context: ./frontend-service
+  #     dockerfile: Dockerfile.dev  # Use a dev-specific Dockerfile
+  #   ports:
+  #     - "5173:5173"  # Vite dev server port
+  #   volumes:
+  #     - ./frontend-service:/app  # Mount source code for hot reload
+  #     - /app/node_modules  # Prevent overriding container node_modules
+  #   environment:
+  #     - VITE_DEV_MODE=true
+  #     - CHOKIDAR_USEPOLLING=true  # Helps with hot reload in Docker
+  #   networks:
+  #     - kafka-net
 
   # Add this to your volumes section at the bottom
   

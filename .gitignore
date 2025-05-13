@@ -1,12 +1,11 @@
 .env
 
 # Data directory
-./collector-service/data/
+collector-service/data/
 
-./collector-service/logs/
+collector-service/logs/
 data/
-
-
+corbeil/
 backend-service/__pycache__/
 
 
