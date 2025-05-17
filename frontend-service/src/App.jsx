@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 import { Chart as ChartJS, registerables } from 'chart.js';
-import { DateTime } from 'luxon';
 import { connectWebSocket, addMessageHandler, removeMessageHandler, processReviewData } from './utils/dataUtils';
 ChartJS.register(...registerables);
 
@@ -27,6 +26,7 @@ export default function App() {
 
   const addReviewToFeed = (review) => {
     if (!review) return;
+    console.log("review:",review);
     
     if (review.sentiment === 'positive') {
       setPositiveCount(prev => prev + 1);
@@ -74,7 +74,6 @@ export default function App() {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
         />
-        
         {activeTab === 'realtime' ? (
           <RealtimeFeed
             reviews={reviews}

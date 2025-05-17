@@ -1,15 +1,13 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from typing import List
 import asyncio
 import json
 from database import Database
 from service import ReviewService, SentimentService
 from kafka_client import consume_messages, consume_sentiment_results
-import uvicorn
-import os
-from dotenv import load_dotenv
 import logging
 
 # Configure logging
@@ -76,28 +74,30 @@ class SentimentAnalysis(BaseModel):
     processed_at: str
 
 # # Kafka consumer for raw reviews
-async def start_kafka_consumer():
-    logger.info("Starting Kafka consumer for raw reviews")
-    while True:
-        try:
-            logger.debug("Attempting to consume raw review message...")
-            review_data = await asyncio.to_thread(consume_messages)
-            if review_data:
-                logger.info(f"Received new review for product: {review_data.get('asin', 'unknown')}")
-                # Store raw review in MongoDB
-                await ReviewService.create_review(review_data)
+
+# async def start_kafka_consumer():
+#     logger.info("Starting Kafka consumer for raw reviews")
+#     while True:
+#         try:
+#             logger.debug("Attempting to consume raw review message...")
+#             review_data = await asyncio.to_thread(consume_messages)
+#             if review_data:
+#                 logger.info(f"Received new review for product: {review_data.get('asin', 'unknown')}")
+#                 # Store raw review in MongoDB
+#                 await ReviewService.create_review(review_data)
                 
-                # Broadcast raw review to WebSocket clients
-                await manager.broadcast({
-                    "type": "new_review",
-                    "data": review_data
-                })
-                logger.debug("Successfully processed and broadcasted review")
-            else:
-                logger.debug("No new raw review messages available")
-        except Exception as e:
-            logger.error(f"Error in Kafka consumer: {str(e)}")
-        await asyncio.sleep(1)
+#                 # Broadcast raw review to WebSocket clients
+#                 await manager.broadcast({
+#                     "type": "new_review",
+#                     "data": review_data
+#                 })
+#                 logger.debug("Successfully processed and broadcasted review")
+#             else:
+#                 logger.debug("No new raw review messages available")
+#         except Exception as e:
+#             logger.error(f"Error in Kafka consumer: {str(e)}")
+#         await asyncio.sleep(1)
+
 
 # # Kafka consumer for sentiment results
 async def start_sentiment_consumer():
@@ -105,7 +105,8 @@ async def start_sentiment_consumer():
     while True:
         try:
             logger.debug("Attempting to consume sentiment result...")
-            sentiment_data = await asyncio.to_thread(consume_sentiment_results)
+
+            sentiment_data = await asyncio.to_thread(consume_messages)
             if sentiment_data:
                 logger.info(f"Received sentiment analysis for review: {sentiment_data.get('reviewerID', 'unknown')}")
                 # Store sentiment analysis in MongoDB
@@ -155,7 +156,6 @@ async def startup_event():
         logger.debug("Database connected successfully")
         
         print("Starting Kafka consumers...")
-        asyncio.create_task(start_kafka_consumer())
         asyncio.create_task(start_sentiment_consumer())
         logger.debug("Kafka consumers started")
     except Exception as e:
@@ -177,17 +177,6 @@ async def health_check():
     logger.debug("Health check endpoint called")
     return {"status": "healthy"}
 
-@app.get("/reviews/", response_model=List[ReviewBase])
-async def get_reviews(skip: int = 0, limit: int = 10):
-    return await ReviewService.get_reviews(skip, limit)
-
-@app.get("/products/{asin}/reviews", response_model=List[ReviewBase])
-async def get_product_reviews(asin: str, skip: int = 0, limit: int = 10):
-    return await ReviewService.get_reviews_by_product(asin, skip, limit)
-
-@app.get("/sentiment/{reviewerID}", response_model=SentimentAnalysis)
-async def get_sentiment_analysis(reviewerID: str):
-    return await SentimentService.get_sentiment_by_reviewer_id(reviewerID)
 
 
 

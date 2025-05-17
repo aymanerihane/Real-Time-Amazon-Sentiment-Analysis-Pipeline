@@ -19,6 +19,9 @@ from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+
 
 # Basic user agents
 USER_AGENTS = [
@@ -29,7 +32,6 @@ USER_AGENTS = [
 # Setup logging
 log_dir = Path("/data/logs")
 log_dir.mkdir(parents=True, exist_ok=True)
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -235,7 +237,6 @@ def send_reviews_to_kafka(producer, reviews):
     
     producer.flush()
     logger.info(f"Successfully sent {len(reviews)} reviews to Kafka")
-
 
 def store_reviews_in_mongodb(mongo_client, reviews):
     """Store the extracted reviews in MongoDB"""

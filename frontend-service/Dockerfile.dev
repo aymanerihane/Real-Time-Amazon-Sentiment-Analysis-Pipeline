@@ -7,8 +7,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY yarn*.lock ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies with legacy peer deps to handle version conflicts
+RUN npm install --legacy-peer-deps
 # OR if using yarn:
 # RUN yarn install
 
@@ -16,6 +16,5 @@ RUN npm install
 # so we don't need to copy it here
 
 EXPOSE 5173
-
 
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

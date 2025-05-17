@@ -1,126 +1,146 @@
-import { useEffect, useRef } from 'react';
-import { Chart as ChartJS, LinearScale, PointElement, LineElement, TimeScale, Tooltip, Legend } from 'chart.js';
-import 'chartjs-adapter-date-fns'; // Required for time scale
-import { generateTimeSeriesData } from '../../utils/dataUtils';
-
-// Register required components
-ChartJS.register(
-  LinearScale,
-  PointElement,
-  LineElement,
-  TimeScale,
-  Tooltip,
-  Legend
-);
+import { useEffect, useRef, useState } from 'react';
+import { Chart as ChartJS } from 'chart.js';
+import { connectWebSocket, addMessageHandler, removeMessageHandler } from '../../utils/dataUtils';
 
 export default function LineChart() {
-  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
   const chartInstance = useRef(null);
+  const [timeSeriesData, setTimeSeriesData] = useState({
+    positive: [],
+    neutral: [],
+    negative: []
+  });
 
   useEffect(() => {
-    // Return early if canvas isn't ready
-    if (!canvasRef.current) return;
+    // Connect to WebSocket
+    connectWebSocket();
 
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
+    // Handle incoming messages
+    const handleMessage = (message) => {
+      if (message.type === 'new_sentiment') {
+        const timestamp = new Date(message.data.processed_at).getTime();
+        const sentiment = message.data.sentiment;
 
-    // Destroy previous chart instance if exists
-    const destroyChart = () => {
+        setTimeSeriesData(prevData => {
+          const newData = {
+            positive: [...prevData.positive],
+            neutral: [...prevData.neutral],
+            negative: [...prevData.negative]
+          };
+
+          // Add new data point
+          newData[sentiment].push({
+            x: timestamp,
+            y: 1
+          });
+
+          // Keep only last 24 hours of data
+          const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+          Object.keys(newData).forEach(key => {
+            newData[key] = newData[key].filter(point => point.x >= oneDayAgo);
+          });
+
+          return newData;
+        });
+      }
+    };
+
+    addMessageHandler(handleMessage);
+
+    return () => {
+      removeMessageHandler(handleMessage);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+
+    const ctx = chartRef.current.getContext('2d');
+    
+    if (chartInstance.current) {
+      chartInstance.current.destroy();
+    }
+
+    chartInstance.current = new ChartJS(ctx, {
+      type: 'line',
+      data: {
+        datasets: [
+          {
+            label: 'Positive',
+            data: timeSeriesData.positive,
+            borderColor: '#10B981',
+            backgroundColor: '#10B98133',
+            fill: true,
+            tension: 0.4
+          },
+          {
+            label: 'Neutral',
+            data: timeSeriesData.neutral,
+            borderColor: '#3B82F6',
+            backgroundColor: '#3B82F633',
+            fill: true,
+            tension: 0.4
+          },
+          {
+            label: 'Negative',
+            data: timeSeriesData.negative,
+            borderColor: '#EF4444',
+            backgroundColor: '#EF444433',
+            fill: true,
+            tension: 0.4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              unit: 'hour',
+              displayFormats: {
+                hour: 'HH:mm'
+              }
+            },
+            grid: {
+              display: false
+            }
+          },
+          y: {
+            beginAtZero: true,
+            grid: {
+              drawBorder: false
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 20
+            }
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false
+          }
+        }
+      }
+    });
+
+    return () => {
       if (chartInstance.current) {
         chartInstance.current.destroy();
         chartInstance.current = null;
       }
     };
-
-    destroyChart();
-
-    // Create new chart instance
-    try {
-      chartInstance.current = new ChartJS(ctx, {
-        type: 'line',
-        data: {
-          datasets: [
-            {
-              label: 'Positive',
-              data: generateTimeSeriesData(30, 5, 15),
-              borderColor: '#10B981',
-              backgroundColor: 'rgba(16, 185, 129, 0.1)',
-              borderWidth: 2,
-              tension: 0.3,
-              fill: true
-            },
-            {
-              label: 'Neutral',
-              data: generateTimeSeriesData(30, 3, 10),
-              borderColor: '#3B82F6',
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
-              borderWidth: 2,
-              tension: 0.3,
-              fill: true
-            },
-            {
-              label: 'Negative',
-              data: generateTimeSeriesData(30, 1, 8),
-              borderColor: '#EF4444',
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              borderWidth: 2,
-              tension: 0.3,
-              fill: true
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: {
-              type: 'time',
-              time: {
-                unit: 'day',
-                tooltipFormat: 'MMM d'
-              },
-              grid: {
-                display: false
-              }
-            },
-            y: {
-              beginAtZero: true,
-              grid: {
-                drawBorder: false
-              }
-            }
-          },
-          plugins: {
-            legend: {
-              position: 'top',
-              labels: {
-                usePointStyle: true,
-                padding: 20
-              }
-            },
-            tooltip: {
-              mode: 'index',
-              intersect: false
-            }
-          },
-          interaction: {
-            mode: 'nearest',
-            axis: 'x',
-            intersect: false
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Chart initialization error:', error);
-      destroyChart();
-    }
-
-    return destroyChart;
-  }, []);
+  }, [timeSeriesData]);
 
   return (
-    <div className="chart-container" style={{ position: 'relative', height: '400px', width: '100%' }}>
-      <canvas ref={canvasRef} />
+    <div className="chart-container">
+      <canvas ref={chartRef} />
     </div>
   );
 }

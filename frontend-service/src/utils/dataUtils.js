@@ -7,7 +7,9 @@ let messageHandlers = new Set();
 export const connectWebSocket = () => {
     if (ws) return; // Already connected
 
-    ws = new WebSocket('ws://localhost:8006/ws/reviews');
+    const wsUrl = 'ws://localhost:8006/ws/reviews';
+    
+    ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
         console.log('WebSocket connected');
@@ -20,6 +22,7 @@ export const connectWebSocket = () => {
     ws.onmessage = (event) => {
         try {
             const message = JSON.parse(event.data);
+            console.log("message:",message)
             // Notify all registered handlers
             messageHandlers.forEach(handler => handler(message));
         } catch (error) {
@@ -49,19 +52,21 @@ export const removeMessageHandler = (handler) => {
 
 // Process incoming review data
 export const processReviewData = (data) => {
-    if (!data || !data.data) return null;
 
-    const review = data.data;
+    console.log("data:",data)
+    if (!data) return null;
+    
     return {
-        id: review.reviewerID,
-        asin: review.asin,
-        reviewText: review.reviewText,
-        sentiment: review.sentiment,
-        confidence: review.sentiment_score,
-        timestamp: review.date,
-        overall: review.overall,
-        helpful_votes: review.helpful_votes,
-        total_votes: review.total_votes
+        asin: data.asin,
+        title: data.title,
+        reviewText: data.reviewText,
+        overall: data.overall,
+        reviewerName: data.reviewer_name,
+        date: data.date,
+        helpfulVotes: parseInt(data.helpful_votes) || 0,
+        totalVotes: parseInt(data.total_votes) || 0,
+        sentiment: data.sentiment,
+        processedAt: data.processed_at
     };
 };
 
@@ -79,7 +84,7 @@ export const generateTimeSeriesData = (reviews, days = 7) => {
 
     // Count reviews for each day
     reviews.forEach(review => {
-        const reviewDate = DateTime.fromISO(review.timestamp).startOf('day').toJSDate();
+        const reviewDate = DateTime.fromISO(review.timestamp).startOf('day').toJSDate(); //! check if timestamp is a part of the data
         const dateKey = reviewDate.toISOString();
         if (reviewCounts.has(dateKey)) {
             reviewCounts.set(dateKey, reviewCounts.get(dateKey) + 1);
@@ -96,4 +101,57 @@ export const generateTimeSeriesData = (reviews, days = 7) => {
 
     return data.sort((a, b) => a.x - b.x);
 };
+
+export const groupReviewsByASIN = (reviews) => {
+    return reviews.reduce((acc, review) => {
+        if (!acc[review.asin]) {
+            acc[review.asin] = {
+                asin: review.asin,
+                title: review.title,
+                reviews: [],
+                averageRating: 0,
+                totalReviews: 0,
+                sentimentDistribution: {
+                    positive: 0,
+                    neutral: 0,
+                    negative: 0
+                }
+            };
+        }
+        
+        acc[review.asin].reviews.push(review);
+        acc[review.asin].totalReviews++;
+        acc[review.asin].sentimentDistribution[review.sentiment]++;
+        acc[review.asin].averageRating = (
+            acc[review.asin].reviews.reduce((sum, r) => sum + r.overall, 0) / 
+            acc[review.asin].totalReviews
+        );
+        
+        return acc;
+    }, {});
+};
+
+export const calculateSentimentStats = (reviews) => {
+    const stats = {
+        positive: 0,
+        neutral: 0,
+        negative: 0,
+        total: reviews.length
+    };
+    
+    reviews.forEach(review => {
+        stats[review.sentiment]++;
+    });
+    
+    return stats;
+};
+
+export const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+};
+
   

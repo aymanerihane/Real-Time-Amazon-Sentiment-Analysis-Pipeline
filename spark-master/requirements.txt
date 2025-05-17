@@ -1,0 +1,16 @@
+nltk==3.8.1
+pyspark==3.4.1
+kafka-python==2.0.2
+pymongo==4.6.1
+numpy==1.24.3
+# pandas==2.0.3
+# scikit-learn==1.3.0
+# joblib==1.3.2
+# imbalanced-learn==0.11.0
+# pyarrow==12.0.1
+pandas
+sklearn
+matplotlib
+joblib
+imblearn
+pyarrow
