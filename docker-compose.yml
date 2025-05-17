@@ -4,7 +4,7 @@ services:
 #           KAFKA
 ##############################
   kafka1:
-    image: bitnami/kafka:latest
+    image: confluentinc/cp-kafka:7.3.0
     container_name: kafka1
     ports:
       - "9092:9092"
@@ -37,10 +37,8 @@ services:
       retries: 5
       start_period: 120s
    
-    
-
   kafka2:
-    image: bitnami/kafka:latest
+    image: confluentinc/cp-kafka:7.3.0
     container_name: kafka2
     ports:
       - "9094:9094"
@@ -66,14 +64,12 @@ services:
       - kafka2_data:/bitnami/kafka
     networks:
       - kafka-net
-    
     healthcheck:
       test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9094 --list || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 120s
-
 
   kafka-init:
     image: bitnami/kafka:latest
@@ -97,7 +93,7 @@ services:
           sleep 10;
           RETRY_COUNT=$((RETRY_COUNT+1))
           if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-            echo 'Max retries reached. Checking network configuration:'
+            echo 'Max retries reached. Checking network configuration:';
             cat /etc/hosts
             ping -c 2 kafka1
             ping -c 2 kafka2
@@ -205,7 +201,7 @@ services:
       start_period: 30s
 
 ##############################
-#  MODEL TRAINNER&PREDICTOR
+#  MODEL TRAINER & PREDICTOR
 ##############################
 
   # ml-service:
@@ -222,6 +218,12 @@ services:
   #     - kafka1
   #     - kafka2
   #     - spark-master
+  #     kafka1:
+  #       condition: service_healthy
+  #     kafka2:
+  #       condition: service_healthy
+  #     kafka-init:
+  #       condition: service_completed_successfully
   #   environment:
   #     - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094
   #     - KAFKA_INPUT_TOPIC=amazon-reviews-raw
@@ -230,17 +232,12 @@ services:
   #     - DATA_PATH=/app/data/Data.json
   #     - MODEL_PATH=/app/resources/sentiment_model_sklearn.pkl
   #     - RESULTS_PATH=/app/results
-  #     - PYSPARK_PYTHON=/usr/local/bin/python3.11
-  #     - PYSPARK_DRIVER_PYTHON=/usr/local/bin/python3.11
-
   #   networks:
   #     - kafka-net
-
 
 ##############################
 #           SPARK
 ##############################
-
 
   # Spark Master
   spark-master:
@@ -249,24 +246,28 @@ services:
     hostname: spark-master
     container_name: spark-master
     environment:
-    - SPARK_MODE=master
-    - SPARK_RPC_AUTHENTICATION_ENABLED=no
-    - SPARK_RPC_ENCRYPTION_ENABLED=no
-    - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-    - SPARK_SSL_ENABLED=no
-    - PYSPARK_PYTHON=/opt/bitnami/python/bin/python3.11
-    - PYSPARK_DRIVER_PYTHON=/opt/bitnami/python/bin/python3.11
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094
+      - KAFKA_INPUT_TOPIC=amazon-reviews-raw
+      - KAFKA_OUTPUT_TOPIC=sentiment-results
+      - MODEL_PATH=/sentiment_model_sklearn.pkl
+      - MONGODB_URI=mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin
+      - MONGODB_DATABASE=amazon_reviews
     ports:
       - "8080:8080"
       - "7077:7077"
     volumes:
-      - spark_data:/bitnami/spark
+      - spark_data:/opt/bitnami/spark/
     networks:
       - kafka-net
 
-  # Spark Worker with explicit Python version
+  # Spark Worker
   spark-worker:
-    image: bitnami/spark:3.4.1
+    image: bitnami/spark:3.1.3
     hostname: spark-worker
     container_name: spark-worker
     depends_on:
@@ -276,18 +277,8 @@ services:
       - SPARK_MASTER_URL=spark://spark-master:7077
       - SPARK_WORKER_MEMORY=2G
       - SPARK_WORKER_CORES=2
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
-      - PYSPARK_PYTHON=/opt/bitnami/python/bin/python3.11
-      - PYSPARK_DRIVER_PYTHON=/opt/bitnami/python/bin/python3.11
-      - SPARK_WORKER_WEBUI_PORT=8081
-      - SPARK_WORKER_CLEANUP_ENABLED=true
-      - SPARK_WORKER_RETRY_WAIT=10
-      - SPARK_WORKER_MAX_RETRIES=30
-    volumes:
-      - spark_data:/bitnami/spark
+    # volumes:
+    #   - spark_data:/opt/bitnami/spark/
     networks:
       - kafka-net
     command: >
@@ -297,13 +288,28 @@ services:
         echo 'Starting Spark worker...' &&
         /opt/bitnami/spark/sbin/start-worker.sh spark://spark-master:7077
       "
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8081 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
+  spark-worker-2:
+    image: bitnami/spark:3.1.3
+    hostname: spark-worker-2
+    container_name: spark-worker-2
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+    # volumes:
+    #   - spark_data:/opt/bitnami/spark/
+    networks:
+      - kafka-net
+    command: >
+      bash -c "
+        echo 'Waiting for Spark master to be ready...' &&
+        sleep 20 &&
+        echo 'Starting Spark worker...' &&
+        /opt/bitnami/spark/sbin/start-worker.sh spark://spark-master:7077
+      "
 
 ##############################
 #     Reviews Collector
@@ -391,7 +397,6 @@ services:
   #   networks:
   #     - kafka-net
 
-
   # # Frontend Service
   # frontend-service:
   #   # Use a development-focused configuration
@@ -410,8 +415,6 @@ services:
   #   networks:
   #     - kafka-net
 
-  # Add this to your volumes section at the bottom
-  
 ##############################
 #         Volumes
 ##############################
@@ -422,7 +425,6 @@ volumes:
   mongodb_data:
   spark_data:
   collector_data:
-  trainer_data:
   backend_data:
   ml_data:
 

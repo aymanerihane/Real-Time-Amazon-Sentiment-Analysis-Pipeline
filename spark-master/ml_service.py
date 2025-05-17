@@ -4,26 +4,94 @@ import logging
 import pandas as pd
 import joblib
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, pandas_udf, current_timestamp
+from pyspark.sql.functions import col, from_json, pandas_udf, current_timestamp, when, lit, expr, udf
 from pyspark.sql.types import StructType, StructField, StringType, FloatType
 import numpy
 from pymongo import MongoClient
 from datetime import datetime
+import uuid
+import nltk
+import re
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
 
+# Initialize NLTK
+try:
+    nltk.data.path.append('/opt/nltk_data')
+    nltk.download('punkt', download_dir='/opt/nltk_data', quiet=True)
+    nltk.download('stopwords', download_dir='/opt/nltk_data', quiet=True)
+    nltk.download('wordnet', download_dir='/opt/nltk_data', quiet=True)
+except Exception as e:
+    logging.error(f"Error initializing NLTK: {str(e)}")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Configuration
-KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka1:9092,kafka2:9093')
+KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka1:9092,kafka2:9094')
 KAFKA_INPUT_TOPIC = os.getenv('KAFKA_INPUT_TOPIC', 'amazon-reviews-raw')
 KAFKA_OUTPUT_TOPIC = os.getenv('KAFKA_OUTPUT_TOPIC', 'sentiment-results')
 SPARK_MASTER = os.getenv('SPARK_MASTER_URL', 'spark://spark-master:7077')
-MODEL_PATH = os.getenv('MODEL_PATH', '/app/resources/sentiment_model_sklearn.pkl')
-MONGO_URI = os.getenv('MONGO_URI', 'mongodb://mongodb:27017/')
+MODEL_PATH = os.getenv('MODEL_PATH', '/sentiment_model_sklearn.pkl')
+MONGO_URI = os.getenv('MONGO_URI', 'mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin')
 MONGO_DB = os.getenv('MONGO_DB', 'amazon_reviews')
 MONGO_COLLECTION = os.getenv('MONGO_COLLECTION', 'sentiment_results')
+
+# Text preprocessing functions
+def clean_text(text):
+    """Clean and normalize text"""
+    if not isinstance(text, str):
+        return ""
+    
+    # Convert to lowercase
+    text = text.lower()
+    
+    # Remove URLs
+    text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
+    
+    # Remove special characters and digits but keep important punctuation
+    text = re.sub(r'[^a-zA-Z\s.,!?]', '', text)
+    
+    # Remove extra whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    return text
+
+def preprocess_text(text):
+    """Preprocess text with tokenization, stopword removal, and lemmatization"""
+    if not isinstance(text, str):
+        return ""
+    
+    # Clean text
+    text = clean_text(text)
+    
+    # Tokenize
+    tokens = word_tokenize(text)
+    
+    # Remove stopwords and lemmatize
+    stop_words = set(stopwords.words('english'))
+    lemmatizer = WordNetLemmatizer()
+    
+    # Process tokens
+    processed_tokens = [
+        lemmatizer.lemmatize(token)
+        for token in tokens
+        if token not in stop_words and len(token) > 1
+    ]
+    
+    return ' '.join(processed_tokens)
+
+# Register UDF for text preprocessing
+@udf(returnType=StringType())
+def preprocess_text_udf(text):
+    """Spark UDF for text preprocessing"""
+    try:
+        return preprocess_text(text)
+    except Exception as e:
+        logger.error(f"Error in text preprocessing: {str(e)}")
+        return ""
 
 # Fix NumPy compatibility issues (add before model loading)
 try:
@@ -54,12 +122,10 @@ def get_review_schema():
 def load_model(spark=None):
     """Load the pre-trained sentiment analysis model and broadcast it"""
     try:
-        # Try to load the model with safe unpickle settings
         logger.info(f"Attempting to load model from {MODEL_PATH}")
         model = joblib.load(MODEL_PATH, mmap_mode='r')
         logger.info("Model loaded successfully")
         
-        # Broadcast the model if spark session is provided
         if spark is not None:
             model = spark.sparkContext.broadcast(model)
             logger.info("Model successfully broadcasted")
@@ -67,43 +133,7 @@ def load_model(spark=None):
         return model
     except Exception as e:
         logger.error(f"Error loading model: {str(e)}")
-        # Try alternative approach for model loading
-        try:
-            logger.info("Attempting alternative model loading approach")
-            # Using pickle directly with custom unpickler
-            import pickle
-            import io
-            with open(MODEL_PATH, 'rb') as file:
-                model = pickle.load(file)
-            logger.info("Model loaded with alternative method")
-            
-            # Broadcast the model if spark session is provided
-            if spark is not None:
-                model = spark.sparkContext.broadcast(model)
-                logger.info("Model successfully broadcasted")
-                
-            return model
-        except Exception as e2:
-            logger.error(f"Alternative model loading also failed: {str(e2)}")
-            raise
-
-# Define a global variable for the broadcasted model
-_model_broadcast = None
-
-# Define pandas UDF for sentiment prediction
-@pandas_udf(StringType())
-def predict_sentiment(reviews: pd.Series) -> pd.Series:
-    """Predict sentiment for each review using the pre-trained model"""
-    # Access the broadcasted model
-    global _model_broadcast
-    
-    # Use the broadcasted model value for prediction
-    model = _model_broadcast.value if _model_broadcast else load_model()
-    
-    # For simplicity, we'll use the raw text
-    # In production, you'd add proper preprocessing here
-    predictions = model.predict(reviews)
-    return pd.Series(predictions)
+        raise
 
 # MongoDB connection
 def get_mongo_client():
@@ -123,8 +153,9 @@ def store_in_mongodb(data):
         db = client[MONGO_DB]
         collection = db[MONGO_COLLECTION]
         
-        # Add timestamp
+        # Add timestamp and ensure all fields are present
         data['stored_at'] = datetime.utcnow()
+        data['id'] = str(uuid.uuid4())  # Add UUID
         
         # Insert the document
         result = collection.insert_one(data)
@@ -133,75 +164,50 @@ def store_in_mongodb(data):
         client.close()
     except Exception as e:
         logger.error(f"Failed to store data in MongoDB: {str(e)}")
-        # Don't raise the exception to prevent stream processing from stopping
+
+# Define pandas UDF for sentiment prediction
+@pandas_udf(StringType())
+def predict_sentiment(reviews: pd.Series) -> pd.Series:
+    """Predict sentiment for each review using the pre-trained model"""
+    try:
+        model = model_broadcast.value
+        reviews = reviews.fillna("").astype(str)
+        predictions = model.predict(reviews)
+        return pd.Series(predictions)
+    except Exception as e:
+        logger.error(f"Prediction error in batch: {str(e)}")
+        return pd.Series([""] * len(reviews))
 
 def main():
     """Main function to process Kafka stream with sentiment analysis"""
-    global _model_broadcast
+    global model_broadcast
     
     logger.info("Starting sentiment analysis service...")
     
     try:
-        # Print Python environment info for debugging
-        import sys
-        logger.info(f"Python version: {sys.version}")
-        
-        # Check and report NumPy version
-        try:
-            import numpy
-            logger.info(f"NumPy version: {numpy.__version__}")
-        except ImportError:
-            logger.warning("NumPy not available - will attempt to install")
-            os.system("pip install numpy==1.23.5")  # Install compatible version
-        
-        # Initialize Spark session
+        # Initialize Spark session with better configuration
         spark = SparkSession.builder \
-            .appName("SimpleSentimentAnalysis") \
+            .appName("ReviewAnalysis") \
             .master(SPARK_MASTER) \
-            .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1") \
+            .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.3") \
+            .config("spark.jars", "/opt/bitnami/spark/jars/*")\
+            .config("spark.sql.streaming.unsupportedOperationCheck", "false") \
             .config("spark.python.worker.reuse", "true") \
+            .config("spark.sql.streaming.checkpointLocation", "/tmp/checkpoint") \
+            .config("spark.sql.streaming.schemaInference", "true") \
+            .config("spark.sql.streaming.stopGracefullyOnShutdown", "true") \
             .getOrCreate()
         
         spark.sparkContext.setLogLevel("WARN")
         logger.info("Spark session initialized")
         
-        # Load and broadcast the model for efficient distribution
+        # Load and broadcast the model
         try:
-            _model_broadcast = load_model(spark)
+            model_broadcast = load_model(spark)
             logger.info("Model broadcasted to Spark cluster")
         except Exception as e:
             logger.error(f"Failed to load model: {str(e)}")
-            logger.info("Using fallback sentiment analysis")
-            
-            # Define a fallback simple sentiment analysis function as pandas UDF
-            @pandas_udf(StringType())
-            def fallback_sentiment(texts):
-                # Very basic sentiment analysis
-                results = []
-                for text in texts:
-                    if not isinstance(text, str):
-                        results.append("neutral")
-                        continue
-                    
-                    pos_words = ['good', 'great', 'excellent', 'love', 'like', 'best']
-                    neg_words = ['bad', 'terrible', 'worst', 'hate', 'dislike', 'poor']
-                    
-                    text = text.lower()
-                    pos_count = sum(word in text for word in pos_words)
-                    neg_count = sum(word in text for word in neg_words)
-                    
-                    if pos_count > neg_count:
-                        results.append("positive")
-                    elif neg_count > pos_count:
-                        results.append("negative")
-                    else:
-                        results.append("neutral")
-                        
-                return pd.Series(results)
-            
-            # Replace the main predict function with the fallback
-            global predict_sentiment
-            predict_sentiment = fallback_sentiment
+            raise
         
         # Create streaming DataFrame from Kafka
         kafka_df = spark \
@@ -209,47 +215,101 @@ def main():
             .format("kafka") \
             .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
             .option("subscribe", KAFKA_INPUT_TOPIC) \
+            .option("failOnDataLoss", "false") \
             .option("startingOffsets", "latest") \
             .load()
         
-        # Parse JSON data from Kafka
+        # Parse JSON data from Kafka with null handling
         parsed_df = kafka_df \
             .selectExpr("CAST(value AS STRING)") \
             .select(from_json(col("value"), get_review_schema()).alias("data")) \
-            .select("data.*")
+            .select("data.*") \
+            .withColumn("processing_time", current_timestamp()) \
+            .withColumn("processed_text", preprocess_text_udf(col("reviewText"))) \
+            .filter(col("reviewText").isNotNull() & (col("reviewText") != ""))
         
-        # Apply sentiment prediction using pandas_udf
+        # Apply sentiment prediction with error handling
         result_df = parsed_df \
-            .withColumn("sentiment", predict_sentiment(col("reviewText"))) \
-            .withColumn("processed_at", current_timestamp().cast(StringType()))
-        
-        
-        # Write results back to Kafka and store in MongoDB
-        def process_batch(batch_df, batch_id):
-            # Convert to pandas for easier MongoDB insertion
-            pandas_df = batch_df.toPandas()
-            
-            # Store each row in MongoDB
-            for _, row in pandas_df.iterrows():
-                store_in_mongodb(row.to_dict())
-        
-        # Write results to both Kafka and MongoDB
-        query = result_df \
-            .selectExpr(
-                "CAST(reviewerID AS STRING) AS key",
-                "to_json(struct(*)) AS value"
+            .withColumn(
+                "sentiment",
+                when(
+                    (col("processed_text") != ""),
+                    predict_sentiment(col("processed_text"))
+                ).otherwise(lit(""))
             ) \
-            .writeStream \
-            .foreachBatch(process_batch) \
-            .format("kafka") \
-            .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
-            .option("topic", KAFKA_OUTPUT_TOPIC) \
-            .option("checkpointLocation", "/tmp/checkpoint") \
+            .withColumn("id", expr("uuid()")) \
+            .select(
+                "id",
+                "reviewerID",
+                "asin",
+                "reviewText",
+                "processed_text",
+                "overall",
+                "reviewer_name",
+                "date",
+                "sentiment",
+                "processing_time"
+            )
+        
+        # Add debug stream
+        debug_query = result_df.writeStream \
+            .format("console") \
             .outputMode("append") \
+            .option("truncate", "false") \
+            .trigger(processingTime='5 seconds') \
             .start()
         
+        # Process batches and store in MongoDB
+        def process_batch(batch_df, batch_id):
+            try:
+                pandas_df = batch_df.toPandas()
+                for _, row in pandas_df.iterrows():
+                    store_in_mongodb(row.to_dict())
+            except Exception as e:
+                logger.error(f"Error processing batch {batch_id}: {str(e)}")
+        
+        # Write results to Kafka and MongoDB
         logger.info(f"Processing stream from {KAFKA_INPUT_TOPIC} to {KAFKA_OUTPUT_TOPIC}")
-        query.awaitTermination()
+        
+        try:
+            query = result_df \
+                .selectExpr(
+                    "CAST(reviewerID AS STRING) AS key",
+                    "to_json(struct(*)) AS value"
+                ) \
+                .writeStream \
+                .foreachBatch(process_batch) \
+                .format("kafka") \
+                .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+                .option("topic", KAFKA_OUTPUT_TOPIC) \
+                .option("checkpointLocation", "/tmp/checkpoint") \
+                .trigger(processingTime='5 seconds') \
+                .outputMode("append") \
+                .start()
+            query.awaitTermination()
+        except Exception as e:
+            logger.error(f"Streaming query terminated with error: {str(e)}")
+            logger.info("Attempting to restart...")
+            try:
+                # Create a new query instead of trying to restart the old one
+                query = result_df \
+                    .selectExpr(
+                        "CAST(reviewerID AS STRING) AS key",
+                        "to_json(struct(*)) AS value"
+                    ) \
+                    .writeStream \
+                    .foreachBatch(process_batch) \
+                    .format("kafka") \
+                    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+                    .option("topic", KAFKA_OUTPUT_TOPIC) \
+                    .option("checkpointLocation", "/tmp/checkpoint") \
+                    .trigger(processingTime='5 seconds') \
+                    .outputMode("append") \
+                    .start()
+                query.awaitTermination()
+            except Exception as e:
+                logger.error(f"Failed to restart streaming: {str(e)}")
+                raise
         
     except Exception as e:
         logger.error(f"Error in main process: {str(e)}")

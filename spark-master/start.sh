@@ -5,10 +5,24 @@ MAX_RETRIES=30
 RETRY_COUNT=0
 RETRY_INTERVAL=5
 SERVICE_RETRY_INTERVAL=30
-DATA_DIR="/app/data"
-RESOURCES_DIR="/app/resources"
-MODEL_PATH="$RESOURCES_DIR/sentiment_model_sklearn.pkl"
+# DATA_DIR="/app/data"
+# RESOURCES_DIR="/app/resources"
+MODEL_PATH="/sentiment_model_sklearn.pkl"
 
+# Create jars directory if it doesn't exist
+mkdir -p jars
+
+# Download the Kafka connector JAR if it doesn't exist
+if [ ! -f "jars/spark-sql-kafka-0-10_2.12-3.4.1.jar" ]; then
+    log "Downloading Spark Kafka Connector JAR..."
+    wget -P jars https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.12/3.4.1/spark-sql-kafka-0-10_2.12-3.4.1.jar
+    if [ $? -eq 0 ]; then
+        log "Successfully downloaded Kafka connector JAR"
+    else
+        log "Failed to download Kafka connector JAR"
+        exit 1
+    fi
+fi
 
 # Function to log messages with timestamp
 log() {
@@ -38,8 +52,8 @@ wait_for_service() {
 
 # Check if data file exists
 check_data_file() {
-    if [ ! -f "$DATA_DIR/Data.json" ]; then
-        log "ERROR: Training data file not found at $DATA_DIR/Data.json"
+    if [ ! -f "/Data.json" ]; then
+        log "ERROR: Training data file not found at /Data.json"
         return 1
     fi
     return 0
@@ -60,18 +74,18 @@ log "Starting Spark master..."
 SPARK_MASTER_PID=$!
 
 # Wait for Spark master to be ready
-log "Waiting for Spark master to be ready..."
-wait_for_service "localhost" "8080" "Spark Master"
+# log "Waiting for Spark master to be ready..."
+# wait_for_service "localhost" "8080" "Spark Master"
 
 # Loop for Kafka services
-while true; do
-    if wait_for_service "kafka1" 9092 "Kafka 1" && wait_for_service "kafka2" 9094 "Kafka 2"; then
-        log "Both Kafka services are ready!"
-        break
-    fi
-    log "Waiting for Kafka services to be ready..."
-    sleep $SERVICE_RETRY_INTERVAL
-done
+# while true; do
+#     if wait_for_service "kafka1" 9092 "Kafka 1" && wait_for_service "kafka2" 9094 "Kafka 2"; then
+#         log "Both Kafka services are ready!"
+#         break
+#     fi
+#     log "Waiting for Kafka services to be ready..."
+#     sleep $SERVICE_RETRY_INTERVAL
+# done
 
 # Continuously try to get the model ready
 while true; do
@@ -104,4 +118,4 @@ done
 
 # Start Spark submit
 log "Starting the Spark submit ..."
-/opt/bitnami/spark/bin/spark-submit --master local[*] --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1 --py-files /app/ml_service.py /app/ml_service.py
+/opt/bitnami/spark/bin/spark-submit --master local[*] --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.3 --py-files /ml_service.py /ml_service.py

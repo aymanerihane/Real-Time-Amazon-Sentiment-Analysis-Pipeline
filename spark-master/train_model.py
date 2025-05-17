@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import json
 import pandas as pd
 import numpy as np
@@ -137,7 +136,7 @@ def train_and_evaluate_models(X_train, X_test, y_train, y_test):
     models = {
         'LogisticRegression': LogisticRegression(max_iter=1000, C=1.0, class_weight='balanced'),
         'RandomForest': RandomForestClassifier(n_estimators=100, max_depth=10, class_weight='balanced'),
-        'SVM': SVC(probability=True, kernel='linear', class_weight='balanced')
+        # 'SVM': SVC(probability=True, kernel='linear', class_weight='balanced')
     }
     
     best_model = None

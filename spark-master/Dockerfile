@@ -1,49 +1,35 @@
-FROM bitnami/spark:3.4.1
+FROM bitnami/spark:3.1.3
 
+# Install pip and required packages
 USER root
 
-# Set working directory
-WORKDIR /app
-
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    python3-pip \
-    python3-dev \
-    netcat-traditional \
-    procps \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y wget netcat-traditional && \
+    rm -rf /var/lib/apt/lists/*
 
-# Create necessary directories with proper permissions
-RUN mkdir -p /app/resources /app/data && \
-    chown -R 1001:1001 /app && \
-    chmod -R 755 /app
+# Copy your requirements file
+COPY start.sh /start.sh
+COPY ml_service.py /ml_service.py
+COPY train_model.py /train_model.py
+COPY Data.json /Data.json
+COPY resources/sentiment_model_sklearn.pkl /sentiment_model_sklearn.pkl
+COPY requirements.txt /opt/bitnami/spark/requirements.txt
 
-# Install Python packages in specific order
-COPY requirements.txt .
-COPY start.sh /app/
-COPY ml_service.py /app/
-COPY train_model.py /app/
-COPY Data.json /app/data
+# Install Python dependencies in the correct order
+RUN pip install --no-cache-dir -r /opt/bitnami/spark/requirements.txt 
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Make start.sh executable
-RUN chmod +x /app/start.sh
+# Set up NLTK data with retries and error handling
+# RUN mkdir -p /opt/nltk_data && \
+#     python3 -c "import nltk; \
+#     nltk.data.path.append('/opt/nltk_data'); \
+#     nltk.download('punkt', download_dir='/opt/nltk_data'); \
+#     nltk.download('stopwords', download_dir='/opt/nltk_data'); \
+#     nltk.download('wordnet', download_dir='/opt/nltk_data')"
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Set environment variables
 
-# Install pandas in the system Python environment
-RUN /opt/bitnami/python/bin/pip install --no-cache-dir pandas==2.0.3 numpy==1.24.3
-
-# Install NLTK and download required data to a shared location
-RUN mkdir -p /opt/nltk_data && \
-    python3 -c "import nltk; \
-    nltk.data.path.append('/nltk_data'); \
-    nltk.download('punkt', download_dir='/nltk_data'); \
-    nltk.download('stopwords', download_dir='/nltk_data'); \
-    nltk.download('wordnet', download_dir='/nltk_data')"
-
-# Switch to non-root user
 USER 1001
 
-# Execute start.sh with bash
-CMD ["/bin/bash", "/app/start.sh"]
+CMD ["/start.sh"]
