@@ -52,6 +52,7 @@ export const removeMessageHandler = (handler) => {
 
 // Process incoming review data
 export const processReviewData = (data) => {
+
     console.log("data:",data)
     if (!data) return null;
     
@@ -152,4 +153,5 @@ export const formatDate = (dateString) => {
         day: 'numeric'
     });
 };
+
   

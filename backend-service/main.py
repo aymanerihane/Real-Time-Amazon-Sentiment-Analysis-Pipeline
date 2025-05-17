@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -73,6 +74,7 @@ class SentimentAnalysis(BaseModel):
     processed_at: str
 
 # # Kafka consumer for raw reviews
+
 # async def start_kafka_consumer():
 #     logger.info("Starting Kafka consumer for raw reviews")
 #     while True:
@@ -96,12 +98,14 @@ class SentimentAnalysis(BaseModel):
 #             logger.error(f"Error in Kafka consumer: {str(e)}")
 #         await asyncio.sleep(1)
 
+
 # # Kafka consumer for sentiment results
 async def start_sentiment_consumer():
     logger.info("Starting Kafka consumer for sentiment results")
     while True:
         try:
             logger.debug("Attempting to consume sentiment result...")
+
             sentiment_data = await asyncio.to_thread(consume_messages)
             if sentiment_data:
                 logger.info(f"Received sentiment analysis for review: {sentiment_data.get('reviewerID', 'unknown')}")
@@ -152,7 +156,6 @@ async def startup_event():
         logger.debug("Database connected successfully")
         
         print("Starting Kafka consumers...")
-        # asyncio.create_task(start_kafka_consumer())
         asyncio.create_task(start_sentiment_consumer())
         logger.debug("Kafka consumers started")
     except Exception as e:
