@@ -4,7 +4,7 @@ import logging
 import pandas as pd
 import joblib
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, pandas_udf, current_timestamp, when, lit, expr, udf
+from pyspark.sql.functions import col, from_json, pandas_udf, current_timestamp, when, lit, expr
 from pyspark.sql.types import StructType, StructField, StringType, FloatType
 import numpy
 from pymongo import MongoClient
@@ -17,8 +17,8 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 
 # Initialize NLTK
+nltk.data.path.append('/opt/nltk_data')
 try:
-    nltk.data.path.append('/opt/nltk_data')
     nltk.download('punkt', download_dir='/opt/nltk_data', quiet=True)
     nltk.download('stopwords', download_dir='/opt/nltk_data', quiet=True)
     nltk.download('wordnet', download_dir='/opt/nltk_data', quiet=True)
@@ -39,59 +39,47 @@ MONGO_URI = os.getenv('MONGO_URI', 'mongodb://root:example@mongodb:27017/amazon_
 MONGO_DB = os.getenv('MONGO_DB', 'amazon_reviews')
 MONGO_COLLECTION = os.getenv('MONGO_COLLECTION', 'sentiment_results')
 
-# Text preprocessing functions
-def smooth_text(text):
-    """Apply text smoothing techniques"""
-    if not isinstance(text, str):
-        return ""
+# Text preprocessing functions as pandas UDF
+@pandas_udf(StringType())
+def preprocess_text(texts: pd.Series) -> pd.Series:
+    """Preprocess text data with lemmatization using pandas vectorization"""
+    results = []
     
-    # Convert to lowercase
-    text = text.lower()
-    
-    # Remove URLs
-    text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
-    
-    # Remove special characters and digits but keep important punctuation
-    text = re.sub(r'[^a-zA-Z\s.,!?]', '', text)
-    
-    # Remove extra whitespace
-    text = re.sub(r'\s+', ' ', text).strip()
-    
-    return text
-
-def preprocess_text(text):
-    """Preprocess text data with lemmatization"""
-    if not isinstance(text, str):
-        return ""
-    
-    # Apply text smoothing
-    text = smooth_text(text)
-    
-    # Tokenize
-    tokens = word_tokenize(text)
-    
-    # Initialize lemmatizer
+    # Initialize lemmatizer and stop words once
     lemmatizer = WordNetLemmatizer()
-    
-    # Remove stopwords and lemmatize
     stop_words = set(stopwords.words('english'))
-    tokens = [lemmatizer.lemmatize(token) for token in tokens if token not in stop_words]
     
-    # Remove short tokens (length < 2)
-    tokens = [token for token in tokens if len(token) > 1]
+    # Process each text in the Series
+    for text in texts:
+        if not isinstance(text, str) or not text:
+            results.append("")
+            continue
+        
+        # Convert to lowercase
+        text = text.lower()
+        
+        # Remove URLs
+        text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
+        
+        # Remove special characters and digits but keep important punctuation
+        text = re.sub(r'[^a-zA-Z\s.,!?]', '', text)
+        
+        # Remove extra whitespace
+        text = re.sub(r'\s+', ' ', text).strip()
+        
+        try:
+            # Tokenize
+            tokens = word_tokenize(text)
+            
+            # Remove stopwords and lemmatize
+            tokens = [lemmatizer.lemmatize(token) for token in tokens if token not in stop_words and len(token) > 1]
+            
+            results.append(' '.join(tokens))
+        except Exception as e:
+            logging.error(f"Error preprocessing text: {str(e)}")
+            results.append("")
     
-    return ' '.join(tokens)
-
-# Fix NumPy compatibility issues (add before model loading)
-try:
-    import numpy
-    # For specific numpy version issues
-    import sys
-    if not hasattr(numpy, '_core'):
-        sys.modules['numpy._core'] = numpy
-    logger.info(f"NumPy version: {numpy.__version__}")
-except Exception as e:
-    logger.error(f"Error setting up NumPy compatibility: {str(e)}")
+    return pd.Series(results)
 
 def get_review_schema():
     """Define the schema for incoming review data"""
@@ -111,45 +99,26 @@ def get_review_schema():
 def load_model(spark=None):
     """Load the pre-trained sentiment analysis model and broadcast it"""
     try:
-        logger.info(f"Attempting to load model from {MODEL_PATH}")
+        logger.info(f"Loading model from {MODEL_PATH}")
         model = joblib.load(MODEL_PATH, mmap_mode='r')
-        logger.info("Model loaded successfully")
-        
         if spark is not None:
-            model = spark.sparkContext.broadcast(model)
-            logger.info("Model successfully broadcasted")
-            
+            model = spark.sparkContext.broadcast(model)            
         return model
     except Exception as e:
         logger.error(f"Error loading model: {str(e)}")
         raise
 
-# MongoDB connection
-def get_mongo_client():
-    """Create and return a MongoDB client"""
-    try:
-        client = MongoClient(MONGO_URI)
-        logger.info("MongoDB connection established")
-        return client
-    except Exception as e:
-        logger.error(f"Failed to connect to MongoDB: {str(e)}")
-        raise
-
 def store_in_mongodb(data):
     """Store the processed data in MongoDB"""
     try:
-        client = get_mongo_client()
+        client = MongoClient(MONGO_URI)
         db = client[MONGO_DB]
         collection = db[MONGO_COLLECTION]
         
         # Add timestamp and ensure all fields are present
         data['stored_at'] = datetime.utcnow()
-        data['id'] = str(uuid.uuid4())  # Add UUID
-        
-        # Insert the document
+        data['id'] = str(uuid.uuid4())
         result = collection.insert_one(data)
-        logger.info(f"Document stored in MongoDB with ID: {result.inserted_id}")
-        
         client.close()
     except Exception as e:
         logger.error(f"Failed to store data in MongoDB: {str(e)}")
@@ -174,64 +143,80 @@ def main():
     logger.info("Starting sentiment analysis service...")
     
     try:
-        # Initialize Spark session with better configuration
+        # Initialize Spark session
         spark = SparkSession.builder \
             .appName("ReviewAnalysis") \
             .master(SPARK_MASTER) \
-            .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.3") \
-            .config("spark.sql.streaming.unsupportedOperationCheck", "false") \
-            .config("spark.python.worker.reuse", "true") \
+            .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0") \
+            .config("spark.driver.extraClassPath", "/opt/bitnami/spark/jars/*") \
+            .config("spark.executor.extraClassPath", "/opt/bitnami/spark/jars/*") \
             .config("spark.sql.streaming.checkpointLocation", "/tmp/checkpoint") \
-            .config("spark.sql.streaming.schemaInference", "true") \
-            .config("spark.sql.streaming.stopGracefullyOnShutdown", "true") \
+            .config("spark.pyspark.python", "/opt/bitnami/python/bin/python3") \
+            .config("spark.pyspark.driver.python", "/opt/bitnami/python/bin/python3") \
+            .config("spark.executorEnv.PYTHONPATH", "/app:$PYTHONPATH") \
+            .config("spark.yarn.appMasterEnv.PYSPARK_PYTHON", "/opt/bitnami/python/bin/python3") \
+            .config("spark.yarn.appMasterEnv.PYSPARK_DRIVER_PYTHON", "/opt/bitnami/python/bin/python3") \
             .getOrCreate()
+        
+        # Verify pandas is available in the driver
+        logger.info(f"Pandas version on driver: {pd.__version__}")
+        
+        # Manually distribute pandas to all workers
+        sc = spark.sparkContext
+        try:
+            # Try to import pandas on each worker
+            import_cmd = "import pandas; print('Pandas version:', pandas.__version__)"
+            result = sc.parallelize([1]).map(lambda x: exec(import_cmd)).collect()
+            logger.info("Successfully verified pandas is available on workers")
+        except Exception as e:
+            logger.warning(f"Could not verify pandas on workers: {str(e)}")
+            # Fallback to installing pandas on workers if not available
+            try:
+                sc.addPyFile("/opt/bitnami/spark/sbin/spark-worker-setup.sh")
+                logger.info("Added worker setup script to distribution")
+            except Exception as setup_err:
+                logger.error(f"Failed to distribute setup script: {str(setup_err)}")
         
         spark.sparkContext.setLogLevel("WARN")
         logger.info("Spark session initialized")
         
         # Load and broadcast the model
-        try:
-            model_broadcast = load_model(spark)
-            logger.info("Model broadcasted to Spark cluster")
-        except Exception as e:
-            logger.error(f"Failed to load model: {str(e)}")
-            raise
+        model_broadcast = load_model(spark)
         
         # Create streaming DataFrame from Kafka
-        kafka_df = spark.readStream.format("kafka").option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS).option("subscribe", KAFKA_INPUT_TOPIC).option("failOnDataLoss", "false").option("startingOffsets", "latest").load()
+        kafka_df = spark.readStream \
+            .format("kafka") \
+            .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+            .option("subscribe", KAFKA_INPUT_TOPIC) \
+            .option("failOnDataLoss", "false") \
+            .option("startingOffsets", "latest") \
+            .load()
         
-        # Parse JSON data from Kafka with null handling
+        # Parse JSON data and process
         parsed_df = kafka_df.selectExpr("CAST(value AS STRING)") \
             .select(from_json(col("value"), get_review_schema()).alias("data")) \
             .select("data.*") \
-            .withColumn("processing_time", current_timestamp()) \
+            .withColumn("processing_time", current_timestamp())
+            
+        # Apply pandas UDF for text preprocessing
+        processed_df = parsed_df \
             .withColumn("processed_text", preprocess_text(col("reviewText"))) \
             .filter(col("reviewText").isNotNull() & (col("reviewText") != ""))
         
-        # Apply sentiment prediction with error handling
-        result_df = parsed_df \
+        # Apply sentiment prediction
+        result_df = processed_df \
             .withColumn(
                 "sentiment",
-                when(
-                    (col("processed_text") != ""),
-                    predict_sentiment(col("processed_text"))
-                ).otherwise(lit(""))
+                when((col("processed_text") != ""), predict_sentiment(col("processed_text")))
+                .otherwise(lit(""))
             ) \
             .withColumn("id", expr("uuid()")) \
             .select(
-                "id",
-                "reviewerID",
-                "asin",
-                "reviewText",
-                "processed_text",
-                "overall",
-                "reviewer_name",
-                "date",
-                "sentiment",
-                "processing_time"
+                "id", "reviewerID", "asin", "reviewText", "processed_text",
+                "overall", "reviewer_name", "date", "sentiment", "processing_time"
             )
         
-        # Add debug stream
+        # Add debug stream to console
         debug_query = result_df.writeStream \
             .format("console") \
             .outputMode("append") \
@@ -251,53 +236,28 @@ def main():
         # Write results to Kafka and MongoDB
         logger.info(f"Processing stream from {KAFKA_INPUT_TOPIC} to {KAFKA_OUTPUT_TOPIC}")
         
-        try:
-            query = result_df \
-                .selectExpr(
-                    "CAST(reviewerID AS STRING) AS key",
-                    "to_json(struct(*)) AS value"
-                ) \
-                .writeStream \
-                .foreachBatch(process_batch) \
-                .format("kafka") \
-                .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
-                .option("topic", KAFKA_OUTPUT_TOPIC) \
-                .option("checkpointLocation", "/tmp/checkpoint") \
-                .trigger(processingTime='5 seconds') \
-                .outputMode("append") \
-                .start()
-            query.awaitTermination()
-        except Exception as e:
-            logger.error(f"Streaming query terminated with error: {str(e)}")
-            logger.info("Attempting to restart...")
-            try:
-                # Create a new query instead of trying to restart the old one
-                query = result_df \
-                    .selectExpr(
-                        "CAST(reviewerID AS STRING) AS key",
-                        "to_json(struct(*)) AS value"
-                    ) \
-                    .writeStream \
-                    .foreachBatch(process_batch) \
-                    .format("kafka") \
-                    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
-                    .option("topic", KAFKA_OUTPUT_TOPIC) \
-                    .option("checkpointLocation", "/tmp/checkpoint") \
-                    .trigger(processingTime='5 seconds') \
-                    .outputMode("append") \
-                    .start()
-                query.awaitTermination()
-            except Exception as e:
-                logger.error(f"Failed to restart streaming: {str(e)}")
-                raise
+        query = result_df \
+            .selectExpr(
+                "CAST(reviewerID AS STRING) AS key",
+                "to_json(struct(*)) AS value"
+            ) \
+            .writeStream \
+            .foreachBatch(process_batch) \
+            .format("kafka") \
+            .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+            .option("topic", KAFKA_OUTPUT_TOPIC) \
+            .option("checkpointLocation", "/tmp/checkpoint") \
+            .trigger(processingTime='5 seconds') \
+            .outputMode("append") \
+            .start()
         
+        query.awaitTermination()
     except Exception as e:
         logger.error(f"Error in main process: {str(e)}")
         raise
     finally:
         if 'spark' in locals():
             spark.stop()
-            logger.info("Spark session stopped")
 
 if __name__ == "__main__":
     main()

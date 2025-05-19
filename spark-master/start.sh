@@ -79,15 +79,30 @@ ls -la $SPARK_JARS_DIR/
 # Set environment variable for Spark to find the JARs
 export SPARK_CLASSPATH="$SPARK_JARS_DIR/*"
 
-# Wait for Spark master to be ready
-wait_for_service "spark-master" 7077 "Spark Master" || log "Warning: Spark Master not reachable but continuing anyway"
+# Start the Spark master service in the background
+log "Starting Spark master service..."
+/opt/bitnami/spark/sbin/start-master.sh &
 
-# Start Spark submit with extra class path and proper packages
+# Wait a moment for the service to start
+sleep 5
+
+# Wait for Spark master to be ready with timeout
+log "Waiting for local Spark Master..."
+wait_for_service "spark-master" 7077 "Spark Master" || log "Warning: Local Spark Master not reachable but continuing anyway" 
+
+# Sleep a bit to make sure services are fully initialized
+sleep 5
+log "Preparing to submit Spark job..."
+
+# Start Spark submit with extra class path and proper packages - use nohup to avoid script issues
 log "Starting the Spark submission process..."
-exec /opt/bitnami/spark/bin/spark-submit \
+log "Command: /opt/bitnami/spark/bin/spark-submit --master local[*] ..."
+
+# Run in foreground to avoid process getting killed
+/opt/bitnami/spark/bin/spark-submit \
     --master local[*] \
-    --jars $SPARK_JARS_DIR/spark-sql-kafka-0-10_2.12-3.1.3.jar,$SPARK_JARS_DIR/kafka-clients-2.8.1.jar \
-    --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.3,org.apache.kafka:kafka-clients:2.8.1 \
+    --jars $SPARK_JARS_DIR/spark-sql-kafka-0-10_2.12-3.5.5.jar,$SPARK_JARS_DIR/kafka-clients-2.8.1.jar \
+    --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.5,org.apache.kafka:kafka-clients:2.8.1 \
     --conf "spark.driver.extraClassPath=$SPARK_JARS_DIR/*" \
     --conf "spark.executor.extraClassPath=$SPARK_JARS_DIR/*" \
     $APP_DIR/ml_service.py
