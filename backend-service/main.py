@@ -109,8 +109,8 @@ async def start_sentiment_consumer():
             sentiment_data = await asyncio.to_thread(consume_messages)
             if sentiment_data:
                 logger.info(f"Received sentiment analysis for review: {sentiment_data.get('reviewerID', 'unknown')}")
-                # Store sentiment analysis in MongoDB
-                await SentimentService.create_sentiment_analysis(sentiment_data)
+                #!! Store sentiment analysis in MongoDB 
+                # await SentimentService.create_sentiment_analysis(sentiment_data)
                 
                 # Broadcast sentiment analysis to WebSocket clients
                 await manager.broadcast({
