@@ -42,7 +42,7 @@ COPY start.sh /app/start.sh
 
 # Create resources directory and copy model
 RUN mkdir -p /app/resources
-COPY resources/sentiment_model_sklearn.pkl /app/resources/
+# COPY resources/sentiment_model_sklearn.pkl /app/resources/
 
 # Fix line endings and make the startup script executable
 RUN dos2unix /app/start.sh && \

@@ -1,257 +1,294 @@
+import json
+import pandas as pd
+import numpy as np
+import re
+import logging
+import os
+import sys
+from pyspark.sql import SparkSession
+from pyspark.ml.feature import Tokenizer, StopWordsRemover, HashingTF, IDF, StringIndexer, VectorAssembler
+from pyspark.ml.classification import LogisticRegression, RandomForestClassifier
+from pyspark.ml import Pipeline
+from pyspark.ml.evaluation import MulticlassClassificationEvaluator
+from pyspark.ml.tuning import ParamGridBuilder, CrossValidator
+from pyspark.sql.functions import udf, col, when, expr, regexp_replace, lower, concat_ws
+from pyspark.sql.types import StringType, ArrayType, DoubleType
+import nltk
+from nltk.stem import WordNetLemmatizer
 
-# import json
-# import pandas as pd
-# import numpy as np
-# from sklearn.model_selection import train_test_split
-# from sklearn.feature_extraction.text import TfidfVectorizer
-# from sklearn.pipeline import Pipeline
-# from sklearn.linear_model import LogisticRegression
-# from sklearn.ensemble import RandomForestClassifier
-# from sklearn.svm import SVC
-# from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-# from imblearn.over_sampling import SMOTE
-# from imblearn.pipeline import Pipeline as ImbPipeline
-# import pickle
-# import nltk
-# from nltk.corpus import stopwords
-# from nltk.tokenize import word_tokenize
-# from nltk.stem import WordNetLemmatizer
-# import re
-# import logging
-# import os
-# import sys
+# Download NLTK resources
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
 
-# # Configure logging
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-# )
-# logger = logging.getLogger(__name__)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-# # Define paths
-# DATA_DIR = '/app/data'
-# RESOURCES_DIR = '/app/resources'
-# RESULTS_DIR = '/app/results'
-# DATA_FILE = os.path.join(DATA_DIR, 'Data.json')
-# MODEL_FILE = os.path.join(RESOURCES_DIR, 'sentiment_model_sklearn.pkl')
+# Define paths
+DATA_DIR = '/app'
+RESOURCES_DIR = '/app/resources'
+RESULTS_DIR = '/app/results'
+DATA_FILE = os.path.join(DATA_DIR, 'Data.json')
+MODEL_DIR = os.path.join(RESOURCES_DIR, 'sentiment_model_mllib')
 
-# # Create necessary directories
-# os.makedirs(RESOURCES_DIR, exist_ok=True)
-# os.makedirs(RESULTS_DIR, exist_ok=True)
+# Create necessary directories
+os.makedirs(RESOURCES_DIR, exist_ok=True)
+os.makedirs(RESULTS_DIR, exist_ok=True)
 
-# def smooth_text(text):
-#     """Apply text smoothing techniques"""
-#     if not isinstance(text, str):
-#         return ""
-    
-#     # Convert to lowercase
-#     text = text.lower()
-    
-#     # Remove URLs
-#     text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
-    
-#     # Remove special characters and digits but keep important punctuation
-#     text = re.sub(r'[^a-zA-Z\s.,!?]', '', text)
-    
-#     # Remove extra whitespace
-#     text = re.sub(r'\s+', ' ', text).strip()
-    
-#     return text
+# Initialize lemmatizer
+lemmatizer = WordNetLemmatizer()
 
-# def preprocess_text(text):
-#     """Preprocess text data with lemmatization"""
-#     if not isinstance(text, str):
-#         return ""
-    
-#     # Apply text smoothing
-#     text = smooth_text(text)
-    
-#     # Tokenize
-#     tokens = word_tokenize(text)
-    
-#     # Initialize lemmatizer
-#     lemmatizer = WordNetLemmatizer()
-    
-#     # Remove stopwords and lemmatize
-#     stop_words = set(stopwords.words('english'))
-#     tokens = [lemmatizer.lemmatize(token) for token in tokens if token not in stop_words]
-    
-#     # Remove short tokens (length < 2)
-#     tokens = [token for token in tokens if len(token) > 1]
-    
-#     return ' '.join(tokens)
+def create_spark_session():
+    """Create and return a Spark session"""
+    return SparkSession.builder \
+        .appName("SentimentAnalysis") \
+        .config("spark.driver.memory", "4g") \
+        .config("spark.executor.memory", "4g") \
+        .getOrCreate()
 
-# def load_and_preprocess_data(file_path):
-#     """Load and preprocess the data"""
-#     logger.info(f"Loading data from JSON file: {file_path}")
+def load_data(spark, file_path):
+    """Load the data using Spark"""
+    logger.info(f"Loading data from JSON file: {file_path}")
     
-#     if not os.path.exists(file_path):
-#         logger.error(f"Data file not found at: {file_path}")
-#         sys.exit(1)
+    if not os.path.exists(file_path):
+        logger.error(f"Data file not found at: {file_path}")
+        sys.exit(1)
     
-#     try:
-#         # Read JSON file in chunks to handle large file
-#         chunks = []
-#         with open(file_path, 'r', encoding='utf-8') as f:
-#             for line in f:
-#                 try:
-#                     chunks.append(json.loads(line))
-#                 except json.JSONDecodeError as e:
-#                     logger.warning(f"Skipping invalid JSON line: {e}")
-#                     continue
+    try:
+        # Read JSON file
+        df = spark.read.json(file_path, multiLine=False)
         
-#         if not chunks:
-#             logger.error("No valid data found in the JSON file")
-#             sys.exit(1)
+        # Keep only relevant columns
+        df = df.select("reviewerID", "asin", "reviewText", "overall", "summary")
         
-#         # Convert to DataFrame
-#         df = pd.DataFrame(chunks)
+        # Handle missing values
+        df = df.na.fill("", ["reviewText", "summary"])
         
-#         # Keep only relevant columns
-#         df = df[['reviewerID', 'asin', 'reviewText', 'overall', 'summary']]
+        # Combine review text and summary for better context
+        df = df.withColumn("combined_text", 
+                          concat_ws(" ", col("summary"), col("reviewText")))
         
-#         # Combine review text and summary for better context
-#         df['combined_text'] = df['summary'] + ' ' + df['reviewText']
+        # Create sentiment labels (rating > 3 is positive)
+        df = df.withColumn("sentiment", 
+                          when(col("overall") > 3, "positive")
+                          .when(col("overall") < 3, "negative")
+                          .otherwise("neutral"))
         
-#         # Preprocess text
-#         logger.info("Preprocessing text data...")
-#         df['processed_text'] = df['combined_text'].apply(preprocess_text)
+        # Log data distribution
+        logger.info(f"Total reviews: {df.count()}")
+        logger.info(f"Positive reviews: {df.filter(col('sentiment') == 'positive').count()}")
+        logger.info(f"Negative reviews: {df.filter(col('sentiment') == 'negative').count()}")
+        logger.info(f"Neutral reviews: {df.filter(col('sentiment') == 'neutral').count()}")
         
-#         # Create sentiment labels (rating > 3 is positive)
-#         df['sentiment'] = df['overall'].apply(lambda x: 'positive' if x > 3 else 'negative' if x < 3 else 'neutral')
-        
-#         # Log data distribution
-#         logger.info(f"Total reviews: {len(df)}")
-#         logger.info(f"Positive reviews: {len(df[df['sentiment'] == 'positive'])}")
-#         logger.info(f"Negative reviews: {len(df[df['sentiment'] == 'negative'])}")
-#         logger.info(f"Neutral reviews: {len(df[df['sentiment'] == 'neutral'])}")
-        
-#         return df
+        return df
     
-#     except Exception as e:
-#         logger.error(f"Error loading data: {str(e)}")
-#         sys.exit(1)
+    except Exception as e:
+        logger.error(f"Error loading data: {str(e)}")
+        sys.exit(1)
 
-# def train_and_evaluate_models(X_train, X_test, y_train, y_test):
-#     """Train and evaluate different models"""
-#     models = {
-#         'LogisticRegression': LogisticRegression(max_iter=1000, C=1.0, class_weight='balanced'),
-#         'RandomForest': RandomForestClassifier(n_estimators=100, max_depth=10, class_weight='balanced'),
-#         # 'SVM': SVC(probability=True, kernel='linear', class_weight='balanced')
-#     }
+def preprocess_text_udf():
+    """Create UDF for text preprocessing"""
+    def lemmatize_text(tokens):
+        """Lemmatize tokens"""
+        if not tokens:
+            return []
+        return [lemmatizer.lemmatize(token) for token in tokens if len(token) > 1]
     
-#     best_model = None
-#     best_accuracy = 0
-#     results = {}
-    
-#     # Create TF-IDF vectorizer
-#     tfidf = TfidfVectorizer(
-#         max_features=5000,
-#         min_df=5,
-#         max_df=0.95,
-#         ngram_range=(1, 2),
-#         sublinear_tf=True
-#     )
-    
-#     # Transform training data
-#     X_train_tfidf = tfidf.fit_transform(X_train)
-#     X_test_tfidf = tfidf.transform(X_test)
-    
-#     # Apply SMOTE to handle class imbalance
-#     logger.info("Applying SMOTE to balance classes...")
-#     smote = SMOTE(random_state=42)
-#     X_train_resampled, y_train_resampled = smote.fit_resample(X_train_tfidf, y_train)
-    
-#     # Log class distribution after SMOTE
-#     unique, counts = np.unique(y_train_resampled, return_counts=True)
-#     logger.info("Class distribution after SMOTE:")
-#     for class_label, count in zip(unique, counts):
-#         logger.info(f"{class_label}: {count}")
-    
-#     for name, model in models.items():
-#         logger.info(f"\nTraining {name}...")
+    def preprocess(text):
+        """Preprocess text data"""
+        if not text:
+            return ""
         
-#         # Train the model
-#         model.fit(X_train_resampled, y_train_resampled)
+        # Convert to lowercase
+        text = text.lower()
         
-#         # Make predictions
-#         y_pred = model.predict(X_test_tfidf)
+        # Remove URLs
+        text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
         
-#         # Calculate accuracy
-#         accuracy = accuracy_score(y_test, y_pred)
-#         logger.info(f"{name} Accuracy: {accuracy:.4f}")
+        # Remove special characters and digits but keep important punctuation
+        text = re.sub(r'[^a-zA-Z\s.,!?]', '', text)
         
-#         # Print classification report
-#         logger.info(f"\nClassification Report for {name}:")
-#         logger.info(classification_report(y_test, y_pred))
+        # Remove extra whitespace
+        text = re.sub(r'\s+', ' ', text).strip()
         
-#         # Store results
-#         results[name] = {
-#             'model': model,
-#             'vectorizer': tfidf,
-#             'accuracy': accuracy,
-#             'predictions': y_pred,
-#             'true_values': y_test
-#         }
-        
-#         # Update best model
-#         if accuracy > best_accuracy:
-#             best_accuracy = accuracy
-#             best_model = (model, tfidf)
+        return text
     
-#     # Save detailed results
-#     with open(os.path.join(RESULTS_DIR, 'training_results.txt'), 'w') as f:
-#         f.write(f"Best Model: {max(results, key=lambda x: results[x]['accuracy'])}\n")
-#         f.write(f"Best Accuracy: {best_accuracy:.4f}\n\n")
-#         for name, result in results.items():
-#             f.write(f"Model: {name}\n")
-#             f.write(f"Accuracy: {result['accuracy']:.4f}\n")
-#             f.write(classification_report(result['true_values'], result['predictions']))
-#             f.write("\n" + "="*50 + "\n")
-    
-#     return best_model, results
+    return udf(preprocess, StringType())
 
-# def save_model(model, filepath):
-#     """Save the trained model"""
-#     try:
-#         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-#         with open(filepath, 'wb') as f:
-#             pickle.dump(model, f)
-#         logger.info(f"Model saved to {filepath}")
-#     except Exception as e:
-#         logger.error(f"Error saving model: {str(e)}")
-#         sys.exit(1)
+def create_pipeline(spark):
+    """Create ML pipeline for text processing and classification"""
+    # Create preprocessing UDF
+    preprocessor = preprocess_text_udf()
+    
+    # Set up pipeline stages
+    stages = [
+        # Preprocess text
+        Tokenizer(inputCol="combined_text", outputCol="tokens"),
+        
+        # Remove stopwords
+        StopWordsRemover(inputCol="tokens", outputCol="filtered_tokens"),
+        
+        # Create TF features
+        HashingTF(inputCol="filtered_tokens", outputCol="raw_features", numFeatures=5000),
+        
+        # Apply IDF
+        IDF(inputCol="raw_features", outputCol="features", minDocFreq=5),
+        
+        # Index labels
+        StringIndexer(inputCol="sentiment", outputCol="label", handleInvalid="keep")
+    ]
+    
+    return stages
 
-# def main():
-#     try:
-#         # Load and preprocess data
-#         df = load_and_preprocess_data(DATA_FILE)
+def train_and_evaluate_models(spark, data):
+    """Train and evaluate models using MLlib"""
+    # Split data
+    train_data, test_data = data.randomSplit([0.8, 0.2], seed=42)
+    
+    # Handle class imbalance
+    # Note: Spark doesn't have built-in SMOTE, so we'll use class weights and sampling
+    # Get class counts
+    class_counts = data.groupBy("sentiment").count().collect()
+    
+    # Calculate class weights for balancing
+    total = sum(row["count"] for row in class_counts)
+    class_weights = {row["sentiment"]: total / row["count"] / len(class_counts) for row in class_counts}
+    
+    logger.info(f"Class weights: {class_weights}")
+    
+    # Create preprocessing pipeline
+    preprocessing_stages = create_pipeline(spark)
+    preprocessing_pipeline = Pipeline(stages=preprocessing_stages)
+    
+    # Fit preprocessing pipeline on training data
+    preprocessing_model = preprocessing_pipeline.fit(train_data)
+    train_processed = preprocessing_model.transform(train_data)
+    test_processed = preprocessing_model.transform(test_data)
+    
+    # Define models
+    models = {
+        'LogisticRegression': LogisticRegression(
+            maxIter=100,
+            regParam=0.1,
+            elasticNetParam=0.8,
+            featuresCol="features",
+            labelCol="label"
+        ),
+        'RandomForest': RandomForestClassifier(
+            numTrees=100,
+            maxDepth=10,
+            featuresCol="features",
+            labelCol="label"
+        )
+    }
+    
+    best_model = None
+    best_accuracy = 0
+    results = {}
+    
+    # Train and evaluate each model
+    for name, model in models.items():
+        logger.info(f"\nTraining {name}...")
         
-#         # Split data
-#         X_train, X_test, y_train, y_test = train_test_split(
-#             df['processed_text'],
-#             df['sentiment'],
-#             test_size=0.2,
-#             random_state=42,
-#             stratify=df['sentiment']  # Ensure balanced split
-#         )
+        # Train the model
+        model_fitted = model.fit(train_processed)
         
-#         # Train and evaluate models
-#         best_model, results = train_and_evaluate_models(X_train, X_test, y_train, y_test)
+        # Make predictions
+        predictions = model_fitted.transform(test_processed)
         
-#         # Save the best model
-#         save_model(best_model, MODEL_FILE)
+        # Evaluate model
+        evaluator = MulticlassClassificationEvaluator(
+            labelCol="label", 
+            predictionCol="prediction", 
+            metricName="accuracy"
+        )
+        accuracy = evaluator.evaluate(predictions)
         
-#         logger.info("Training completed successfully!")
-#         logger.info(f"Model saved to {MODEL_FILE}")
-#         logger.info(f"Results saved to {RESULTS_DIR}/")
+        # Log results
+        logger.info(f"{name} Accuracy: {accuracy:.4f}")
         
-#         # Exit with success
-#         sys.exit(0)
+        # Store results
+        results[name] = {
+            'model': model_fitted,
+            'pipeline': preprocessing_model,
+            'accuracy': accuracy
+        }
         
-#     except Exception as e:
-#         logger.error(f"Error in main process: {str(e)}")
-#         sys.exit(1)
+        # Update best model
+        if accuracy > best_accuracy:
+            best_accuracy = accuracy
+            best_model = {
+                'model': model_fitted,
+                'pipeline': preprocessing_model,
+                'name': name
+            }
+    
+    # Save detailed results
+    with open(os.path.join(RESULTS_DIR, 'training_results.txt'), 'w') as f:
+        f.write(f"Best Model: {best_model['name']}\n")
+        f.write(f"Best Accuracy: {best_accuracy:.4f}\n\n")
+        for name, result in results.items():
+            f.write(f"Model: {name}\n")
+            f.write(f"Accuracy: {result['accuracy']:.4f}\n")
+            f.write("\n" + "="*50 + "\n")
+    
+    return best_model, results
 
-# if __name__ == "__main__":
-#     main() 
+def save_model(model_info, model_dir):
+    """Save the trained model"""
+    try:
+        # Create directory if it doesn't exist
+        os.makedirs(model_dir, exist_ok=True)
+        
+        # Save pipeline model
+        pipeline_path = os.path.join(model_dir, "pipeline")
+        model_info['pipeline'].write().overwrite().save(pipeline_path)
+        
+        # Save classification model
+        model_path = os.path.join(model_dir, "model")
+        model_info['model'].write().overwrite().save(model_path)
+        
+        # Save model name
+        with open(os.path.join(model_dir, "model_info.txt"), "w") as f:
+            f.write(f"Model: {model_info['name']}\n")
+        
+        logger.info(f"Model saved to {model_dir}")
+        
+    except Exception as e:
+        logger.error(f"Error saving model: {str(e)}")
+        sys.exit(1)
+
+def main():
+    try:
+        # Create Spark session
+        spark = create_spark_session()
+        
+        # Load and preprocess data
+        df = load_data(spark, DATA_FILE)
+        
+        # Train and evaluate models
+        best_model, results = train_and_evaluate_models(spark, df)
+        
+        # Save the best model
+        save_model(best_model, MODEL_DIR)
+        
+        logger.info("Training completed successfully!")
+        logger.info(f"Model saved to {MODEL_DIR}")
+        logger.info(f"Results saved to {RESULTS_DIR}/")
+        
+        # Stop Spark session
+        spark.stop()
+        
+        # Exit with success
+        sys.exit(0)
+        
+    except Exception as e:
+        logger.error(f"Error in main process: {str(e)}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main() 

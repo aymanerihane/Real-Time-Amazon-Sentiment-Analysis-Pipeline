@@ -2,11 +2,10 @@
 import os
 import logging
 import pandas as pd
-import joblib
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, pandas_udf, current_timestamp, when, lit, expr
+from pyspark.sql.functions import col, from_json, pandas_udf, current_timestamp, when, lit, expr, udf, concat_ws
 from pyspark.sql.types import StructType, StructField, StringType, FloatType
-import numpy
+from pyspark.ml import PipelineModel
 from pymongo import MongoClient
 from datetime import datetime
 import uuid
@@ -34,7 +33,7 @@ KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka1:9092,kafk
 KAFKA_INPUT_TOPIC = os.getenv('KAFKA_INPUT_TOPIC', 'amazon-reviews-raw')
 KAFKA_OUTPUT_TOPIC = os.getenv('KAFKA_OUTPUT_TOPIC', 'sentiment-results')
 SPARK_MASTER = os.getenv('SPARK_MASTER_URL', 'spark://spark-master:7077')
-MODEL_PATH = os.getenv('MODEL_PATH', '/sentiment_model_sklearn.pkl')
+MODEL_DIR = os.getenv('MODEL_DIR', '/app/resources/sentiment_model_mllib')
 MONGO_URI = os.getenv('MONGO_URI', 'mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin')
 MONGO_DB = os.getenv('MONGO_DB', 'amazon_reviews')
 MONGO_COLLECTION = os.getenv('MONGO_COLLECTION', 'sentiment_results')
@@ -97,15 +96,34 @@ def get_review_schema():
         StructField("scrape_time", StringType(), True),
     ])
 
-def load_model(spark=None):
-    """Load the pre-trained sentiment analysis model and broadcast it"""
+def load_model(spark):
+    """Load the pre-trained Spark MLlib model"""
     try:
-
-        logger.info(f"Loading model from {MODEL_PATH}")
-        model = joblib.load(MODEL_PATH, mmap_mode='r')
-        if spark is not None:
-            model = spark.sparkContext.broadcast(model)            
-        return model
+        logger.info(f"Loading MLlib model from {MODEL_DIR}")
+        # Load the Pipeline model
+        pipeline_model = PipelineModel.load(f"{MODEL_DIR}/pipeline")
+        # Load the classification model
+        model_type = "unknown"
+        with open(f"{MODEL_DIR}/model_info.txt", "r") as f:
+            for line in f:
+                if line.startswith("Model:"):
+                    model_type = line.split(":", 1)[1].strip()
+                    break
+        
+        # Load the appropriate model based on type
+        if "LogisticRegression" in model_type:
+            from pyspark.ml.classification import LogisticRegressionModel
+            classifier = LogisticRegressionModel.load(f"{MODEL_DIR}/model")
+        elif "RandomForest" in model_type:
+            from pyspark.ml.classification import RandomForestClassificationModel
+            classifier = RandomForestClassificationModel.load(f"{MODEL_DIR}/model")
+        else:
+            logger.warning(f"Unknown model type: {model_type}, defaulting to LogisticRegression")
+            from pyspark.ml.classification import LogisticRegressionModel
+            classifier = LogisticRegressionModel.load(f"{MODEL_DIR}/model")
+        
+        logger.info(f"Successfully loaded {model_type} model")
+        return {"pipeline": pipeline_model, "classifier": classifier}
     except Exception as e:
         logger.error(f"Error loading model: {str(e)}")
         raise
@@ -125,23 +143,15 @@ def store_in_mongodb(data):
     except Exception as e:
         logger.error(f"Failed to store data in MongoDB: {str(e)}")
 
-# Define pandas UDF for sentiment prediction
-@pandas_udf(StringType())
-def predict_sentiment(reviews: pd.Series) -> pd.Series:
-    """Predict sentiment for each review using the pre-trained model"""
-    try:
-        model = model_broadcast.value
-        reviews = reviews.fillna("").astype(str)
-        predictions = model.predict(reviews)
-        return pd.Series(predictions)
-    except Exception as e:
-        logger.error(f"Prediction error in batch: {str(e)}")
-        return pd.Series([""] * len(reviews))
+def get_sentiment_label(prediction_col):
+    """Convert numeric prediction to string label"""
+    return when(col(prediction_col) == 0.0, "negative") \
+           .when(col(prediction_col) == 1.0, "neutral") \
+           .when(col(prediction_col) == 2.0, "positive") \
+           .otherwise("unknown")
 
 def main():
     """Main function to process Kafka stream with sentiment analysis"""
-    global model_broadcast
-    
     logger.info("Starting sentiment analysis service...")
     
     try:
@@ -182,8 +192,10 @@ def main():
         spark.sparkContext.setLogLevel("WARN")
         logger.info("Spark session initialized")
         
-        # Load and broadcast the model
-        model_broadcast = load_model(spark)
+        # Load MLlib models
+        models = load_model(spark)
+        pipeline_model = models["pipeline"]
+        classifier = models["classifier"]
         
         # Create streaming DataFrame from Kafka
         kafka_df = spark.readStream \
@@ -200,62 +212,79 @@ def main():
             .select(from_json(col("value"), get_review_schema()).alias("data")) \
             .select("data.*") \
             .withColumn("processing_time", current_timestamp())
-            
-        # Apply pandas UDF for text preprocessing
+        
+        # Apply preprocessing - using the preprocess_text function for initial cleaning
+        # then we'll process through the MLlib pipeline
         processed_df = parsed_df \
-            .withColumn("processed_text", preprocess_text(col("reviewText"))) \
-            .filter(col("reviewText").isNotNull() & (col("reviewText") != ""))
+            .withColumn("combined_text", when(col("title").isNotNull(), 
+                                              concat_ws(" ", col("title"), col("reviewText")))
+                                         .otherwise(col("reviewText"))) \
+            .withColumn("processed_text", preprocess_text(col("combined_text"))) \
+            .filter(col("combined_text").isNotNull() & (col("combined_text") != ""))
         
-        # Apply sentiment prediction
-        result_df = processed_df \
-            .withColumn(
-                "sentiment",
-                when((col("processed_text") != ""), predict_sentiment(col("processed_text")))
-                .otherwise(lit(""))
-            ) \
-            .withColumn("id", expr("uuid()")) \
-            .select(
-                "id", "reviewerID", "asin", "reviewText", "processed_text",
-                "overall", "reviewer_name", "date", "sentiment", "processing_time"
-            )
-        
-        # Add debug stream to console
-
-        debug_query = result_df.writeStream \
-            .format("console") \
-            .outputMode("append") \
-            .option("truncate", "false") \
-            .trigger(processingTime='5 seconds') \
-            .start()
-        
-        # Process batches and store in MongoDB
+        # Define a processBatch function to apply the ML pipeline and classification
         def process_batch(batch_df, batch_id):
+            if batch_df.count() == 0:
+                logger.info(f"Empty batch {batch_id}, skipping")
+                return
+            
             try:
-                pandas_df = batch_df.toPandas()
+                # Apply pipeline transformations
+                transformed_df = pipeline_model.transform(batch_df)
+                
+                # Apply classifier
+                predictions_df = classifier.transform(transformed_df)
+                
+                # Convert numeric prediction to sentiment label
+                result_df = predictions_df \
+                    .withColumn("sentiment", get_sentiment_label("prediction")) \
+                    .withColumn("id", expr("uuid()")) \
+                    .select(
+                        "id", "reviewerID", "asin", "reviewText", "processed_text",
+                        "overall", "reviewer_name", "date", "sentiment", "processing_time"
+                    )
+                
+                # Debug output to console
+                logger.info(f"Processed batch {batch_id} with {result_df.count()} records")
+                result_df.show(10, truncate=True)
+                
+                # Store in MongoDB
+                pandas_df = result_df.toPandas()
                 for _, row in pandas_df.iterrows():
                     store_in_mongodb(row.to_dict())
+                
+                # Write to Kafka
+                result_df.selectExpr(
+                    "CAST(reviewerID AS STRING) AS key",
+                    "to_json(struct(*)) AS value"
+                ).write \
+                  .format("kafka") \
+                  .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+                  .option("topic", KAFKA_OUTPUT_TOPIC) \
+                  .save()
+                
             except Exception as e:
                 logger.error(f"Error processing batch {batch_id}: {str(e)}")
         
-        # Write results to Kafka and MongoDB
-        logger.info(f"Processing stream from {KAFKA_INPUT_TOPIC} to {KAFKA_OUTPUT_TOPIC}")
-        
-        query = result_df \
-            .selectExpr(
-                "CAST(reviewerID AS STRING) AS key",
-                "to_json(struct(*)) AS value"
-            ) \
-            .writeStream \
+        # Process the stream with the batch function
+        query = processed_df.writeStream \
             .foreachBatch(process_batch) \
-            .format("kafka") \
-            .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
-            .option("topic", KAFKA_OUTPUT_TOPIC) \
-            .option("checkpointLocation", "/tmp/checkpoint") \
+            .outputMode("update") \
             .trigger(processingTime='5 seconds') \
-            .outputMode("append") \
+            .option("checkpointLocation", "/tmp/checkpoint") \
             .start()
         
+        # Also output to console for debugging
+        debug_query = processed_df.writeStream \
+            .format("console") \
+            .outputMode("append") \
+            .option("truncate", "false") \
+            .trigger(processingTime='10 seconds') \
+            .start()
+        
+        logger.info(f"Processing stream from {KAFKA_INPUT_TOPIC} to {KAFKA_OUTPUT_TOPIC}")
         query.awaitTermination()
+        
     except Exception as e:
         logger.error(f"Error in main process: {str(e)}")
         raise
