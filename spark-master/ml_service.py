@@ -99,6 +99,7 @@ def get_review_schema():
 def load_model(spark):
     """Load the pre-trained Spark MLlib model"""
     try:
+
         logger.info(f"Loading MLlib model from {MODEL_DIR}")
         # Load the Pipeline model
         pipeline_model = PipelineModel.load(f"{MODEL_DIR}/pipeline")
@@ -172,6 +173,7 @@ def main():
         
         # Verify pandas is available in the driver
         logger.info(f"Pandas version on driver: {pd.__version__}")
+
         
         # Manually distribute pandas to all workers
         sc = spark.sparkContext
@@ -196,6 +198,7 @@ def main():
         models = load_model(spark)
         pipeline_model = models["pipeline"]
         classifier = models["classifier"]
+
         
         # Create streaming DataFrame from Kafka
         kafka_df = spark.readStream \
@@ -212,6 +215,7 @@ def main():
             .select(from_json(col("value"), get_review_schema()).alias("data")) \
             .select("data.*") \
             .withColumn("processing_time", current_timestamp())
+
         
         # Apply preprocessing - using the preprocess_text function for initial cleaning
         # then we'll process through the MLlib pipeline
@@ -223,6 +227,7 @@ def main():
             .filter(col("combined_text").isNotNull() & (col("combined_text") != ""))
         
         # Define a processBatch function to apply the ML pipeline and classification
+
         def process_batch(batch_df, batch_id):
             if batch_df.count() == 0:
                 logger.info(f"Empty batch {batch_id}, skipping")
@@ -274,6 +279,7 @@ def main():
             .option("checkpointLocation", "/tmp/checkpoint") \
             .start()
         
+
         # Also output to console for debugging
         debug_query = processed_df.writeStream \
             .format("console") \
@@ -284,7 +290,9 @@ def main():
         
         logger.info(f"Processing stream from {KAFKA_INPUT_TOPIC} to {KAFKA_OUTPUT_TOPIC}")
         query.awaitTermination()
+
         
+        query.awaitTermination()
     except Exception as e:
         logger.error(f"Error in main process: {str(e)}")
         raise

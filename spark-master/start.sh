@@ -49,6 +49,7 @@ check_model_dir() {
     fi
     
     log "Model directory found at $MODEL_DIR"
+
     return 0
 }
 
@@ -67,7 +68,9 @@ wait_for_service "kafka2" 9094 "Kafka2" || log "Warning: Kafka2 not reachable bu
 log "Kafka checks completed"
 
 # Check if model exists
+
 if ! check_model_dir; then
+
     log "Model not found. Will attempt to train it."
     if [ -f "$APP_DIR/train_model.py" ]; then
         log "Running model training script..."
@@ -76,7 +79,9 @@ if ! check_model_dir; then
         log "ERROR: Training script not found at $APP_DIR/train_model.py"
     fi
     # Check again
+
     check_model_dir
+
 fi
 
 # List the JARs to ensure they're available
@@ -85,7 +90,9 @@ ls -la $SPARK_JARS_DIR/
 
 # Set environment variable for Spark to find the JARs
 export SPARK_CLASSPATH="$SPARK_JARS_DIR/*"
+
 export MODEL_DIR="$MODEL_DIR"
+
 
 # Start the Spark master service in the background
 log "Starting Spark master service..."

@@ -1,3 +1,4 @@
+
 import json
 import pandas as pd
 import numpy as np
@@ -21,12 +22,28 @@ nltk.download('punkt')
 nltk.download('stopwords')
 nltk.download('wordnet')
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# import json
+# import pandas as pd
+# import numpy as np
+# from sklearn.model_selection import train_test_split
+# from sklearn.feature_extraction.text import TfidfVectorizer
+# from sklearn.pipeline import Pipeline
+# from sklearn.linear_model import LogisticRegression
+# from sklearn.ensemble import RandomForestClassifier
+# from sklearn.svm import SVC
+# from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+# from imblearn.over_sampling import SMOTE
+# from imblearn.pipeline import Pipeline as ImbPipeline
+# import pickle
+# import nltk
+# from nltk.corpus import stopwords
+# from nltk.tokenize import word_tokenize
+# from nltk.stem import WordNetLemmatizer
+# import re
+# import logging
+# import os
+# import sys
+
 
 # Define paths
 DATA_DIR = '/app'
@@ -35,9 +52,14 @@ RESULTS_DIR = '/app/results'
 DATA_FILE = os.path.join(DATA_DIR, 'Data.json')
 MODEL_DIR = os.path.join(RESOURCES_DIR, 'sentiment_model_mllib')
 
-# Create necessary directories
-os.makedirs(RESOURCES_DIR, exist_ok=True)
-os.makedirs(RESULTS_DIR, exist_ok=True)
+
+# # Define paths
+# DATA_DIR = '/app/data'
+# RESOURCES_DIR = '/app/resources'
+# RESULTS_DIR = '/app/results'
+# DATA_FILE = os.path.join(DATA_DIR, 'Data.json')
+# MODEL_FILE = os.path.join(RESOURCES_DIR, 'sentiment_model_sklearn.pkl')
+
 
 # Initialize lemmatizer
 lemmatizer = WordNetLemmatizer()
@@ -53,10 +75,11 @@ def create_spark_session():
 def load_data(spark, file_path):
     """Load the data using Spark"""
     logger.info(f"Loading data from JSON file: {file_path}")
+
     
-    if not os.path.exists(file_path):
-        logger.error(f"Data file not found at: {file_path}")
-        sys.exit(1)
+#     if not os.path.exists(file_path):
+#         logger.error(f"Data file not found at: {file_path}")
+#         sys.exit(1)
     
     try:
         # Read JSON file
@@ -83,12 +106,12 @@ def load_data(spark, file_path):
         logger.info(f"Positive reviews: {df.filter(col('sentiment') == 'positive').count()}")
         logger.info(f"Negative reviews: {df.filter(col('sentiment') == 'negative').count()}")
         logger.info(f"Neutral reviews: {df.filter(col('sentiment') == 'neutral').count()}")
-        
-        return df
+
+#         return df
     
-    except Exception as e:
-        logger.error(f"Error loading data: {str(e)}")
-        sys.exit(1)
+#     except Exception as e:
+#         logger.error(f"Error loading data: {str(e)}")
+#         sys.exit(1)
 
 def preprocess_text_udf():
     """Create UDF for text preprocessing"""
@@ -186,9 +209,9 @@ def train_and_evaluate_models(spark, data):
         )
     }
     
-    best_model = None
-    best_accuracy = 0
-    results = {}
+#     best_model = None
+#     best_accuracy = 0
+#     results = {}
     
     # Train and evaluate each model
     for name, model in models.items():
@@ -235,8 +258,10 @@ def train_and_evaluate_models(spark, data):
             f.write(f"Model: {name}\n")
             f.write(f"Accuracy: {result['accuracy']:.4f}\n")
             f.write("\n" + "="*50 + "\n")
+
     
-    return best_model, results
+#     return best_model, results
+
 
 def save_model(model_info, model_dir):
     """Save the trained model"""
@@ -285,10 +310,11 @@ def main():
         
         # Exit with success
         sys.exit(0)
-        
-    except Exception as e:
-        logger.error(f"Error in main process: {str(e)}")
-        sys.exit(1)
 
-if __name__ == "__main__":
-    main() 
+        
+#     except Exception as e:
+#         logger.error(f"Error in main process: {str(e)}")
+#         sys.exit(1)
+
+# if __name__ == "__main__":
+#     main() 
