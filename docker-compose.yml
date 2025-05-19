@@ -4,7 +4,7 @@ services:
 #           KAFKA
 ##############################
   kafka1:
-    image: confluentinc/cp-kafka:7.3.0
+    image: bitnami/kafka:latest
     container_name: kafka1
     ports:
       - "9092:9092"
@@ -38,7 +38,7 @@ services:
       start_period: 120s
    
   kafka2:
-    image: confluentinc/cp-kafka:7.3.0
+    image: bitnami/kafka:latest
     container_name: kafka2
     ports:
       - "9094:9094"
@@ -269,7 +269,7 @@ services:
 
   # Spark Worker with explicit Python version
   spark-worker:
-    image: bitnami/spark:3.1.3
+    image: bitnami/spark:latest
     hostname: spark-worker
     container_name: spark-worker
     depends_on:
@@ -291,7 +291,7 @@ services:
         /opt/bitnami/spark/sbin/start-worker.sh spark://spark-master:7077
       "
   spark-worker-2:
-    image: bitnami/spark:3.1.3
+    image: bitnami/spark:latest
     hostname: spark-worker-2
     container_name: spark-worker-2
     depends_on:

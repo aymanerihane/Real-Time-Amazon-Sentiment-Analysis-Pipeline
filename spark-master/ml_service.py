@@ -40,8 +40,8 @@ MONGO_DB = os.getenv('MONGO_DB', 'amazon_reviews')
 MONGO_COLLECTION = os.getenv('MONGO_COLLECTION', 'sentiment_results')
 
 # Text preprocessing functions
-def clean_text(text):
-    """Clean and normalize text"""
+def smooth_text(text):
+    """Apply text smoothing techniques"""
     if not isinstance(text, str):
         return ""
     
@@ -60,38 +60,27 @@ def clean_text(text):
     return text
 
 def preprocess_text(text):
-    """Preprocess text with tokenization, stopword removal, and lemmatization"""
+    """Preprocess text data with lemmatization"""
     if not isinstance(text, str):
         return ""
     
-    # Clean text
-    text = clean_text(text)
+    # Apply text smoothing
+    text = smooth_text(text)
     
     # Tokenize
     tokens = word_tokenize(text)
     
-    # Remove stopwords and lemmatize
-    stop_words = set(stopwords.words('english'))
+    # Initialize lemmatizer
     lemmatizer = WordNetLemmatizer()
     
-    # Process tokens
-    processed_tokens = [
-        lemmatizer.lemmatize(token)
-        for token in tokens
-        if token not in stop_words and len(token) > 1
-    ]
+    # Remove stopwords and lemmatize
+    stop_words = set(stopwords.words('english'))
+    tokens = [lemmatizer.lemmatize(token) for token in tokens if token not in stop_words]
     
-    return ' '.join(processed_tokens)
-
-# Register UDF for text preprocessing
-@udf(returnType=StringType())
-def preprocess_text_udf(text):
-    """Spark UDF for text preprocessing"""
-    try:
-        return preprocess_text(text)
-    except Exception as e:
-        logger.error(f"Error in text preprocessing: {str(e)}")
-        return ""
+    # Remove short tokens (length < 2)
+    tokens = [token for token in tokens if len(token) > 1]
+    
+    return ' '.join(tokens)
 
 # Fix NumPy compatibility issues (add before model loading)
 try:
@@ -190,7 +179,6 @@ def main():
             .appName("ReviewAnalysis") \
             .master(SPARK_MASTER) \
             .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.3") \
-            .config("spark.jars", "/opt/bitnami/spark/jars/*")\
             .config("spark.sql.streaming.unsupportedOperationCheck", "false") \
             .config("spark.python.worker.reuse", "true") \
             .config("spark.sql.streaming.checkpointLocation", "/tmp/checkpoint") \
@@ -210,22 +198,14 @@ def main():
             raise
         
         # Create streaming DataFrame from Kafka
-        kafka_df = spark \
-            .readStream \
-            .format("kafka") \
-            .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
-            .option("subscribe", KAFKA_INPUT_TOPIC) \
-            .option("failOnDataLoss", "false") \
-            .option("startingOffsets", "latest") \
-            .load()
+        kafka_df = spark.readStream.format("kafka").option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS).option("subscribe", KAFKA_INPUT_TOPIC).option("failOnDataLoss", "false").option("startingOffsets", "latest").load()
         
         # Parse JSON data from Kafka with null handling
-        parsed_df = kafka_df \
-            .selectExpr("CAST(value AS STRING)") \
+        parsed_df = kafka_df.selectExpr("CAST(value AS STRING)") \
             .select(from_json(col("value"), get_review_schema()).alias("data")) \
             .select("data.*") \
             .withColumn("processing_time", current_timestamp()) \
-            .withColumn("processed_text", preprocess_text_udf(col("reviewText"))) \
+            .withColumn("processed_text", preprocess_text(col("reviewText"))) \
             .filter(col("reviewText").isNotNull() & (col("reviewText") != ""))
         
         # Apply sentiment prediction with error handling
