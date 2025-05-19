@@ -4,7 +4,7 @@ services:
 #           KAFKA
 ##############################
   kafka1:
-    image: confluentinc/cp-kafka:7.3.0
+    image: bitnami/kafka:latest
     container_name: kafka1
     ports:
       - "9092:9092"
@@ -38,7 +38,7 @@ services:
       start_period: 120s
    
   kafka2:
-    image: confluentinc/cp-kafka:7.3.0
+    image: bitnami/kafka:latest
     container_name: kafka2
     ports:
       - "9094:9094"

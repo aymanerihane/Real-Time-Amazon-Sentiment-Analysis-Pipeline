@@ -6,7 +6,7 @@ RETRY_INTERVAL=5
 SERVICE_RETRY_INTERVAL=30
 APP_DIR="/app"
 RESOURCES_DIR="/app/resources"
-MODEL_PATH="$RESOURCES_DIR/sentiment_model_sklearn.pkl"
+MODEL_DIR="$RESOURCES_DIR/sentiment_model_mllib"
 SPARK_JARS_DIR="/opt/bitnami/spark/jars"
 
 
@@ -36,13 +36,20 @@ wait_for_service() {
     return 1
 }
 
-# Check if model file exists
-check_model_file() {
-    if [ ! -f "$MODEL_PATH" ]; then
-        log "ERROR: Model file not found at $MODEL_PATH"
+# Check if model directory exists and contains necessary files
+check_model_dir() {
+    if [ ! -d "$MODEL_DIR" ] || [ ! -d "$MODEL_DIR/pipeline" ] || [ ! -d "$MODEL_DIR/model" ]; then
+        log "ERROR: Model directory not found or incomplete at $MODEL_DIR"
         return 1
     fi
-    log "Model file found at $MODEL_PATH"
+    
+    if [ ! -f "$MODEL_DIR/model_info.txt" ]; then
+        log "ERROR: Model info file not found at $MODEL_DIR/model_info.txt"
+        return 1
+    fi
+    
+    log "Model directory found at $MODEL_DIR"
+
     return 0
 }
 
@@ -61,7 +68,9 @@ wait_for_service "kafka2" 9094 "Kafka2" || log "Warning: Kafka2 not reachable bu
 log "Kafka checks completed"
 
 # Check if model exists
-if ! check_model_file; then
+
+if ! check_model_dir; then
+
     log "Model not found. Will attempt to train it."
     if [ -f "$APP_DIR/train_model.py" ]; then
         log "Running model training script..."
@@ -70,7 +79,9 @@ if ! check_model_file; then
         log "ERROR: Training script not found at $APP_DIR/train_model.py"
     fi
     # Check again
-    check_model_file
+
+    check_model_dir
+
 fi
 
 # List the JARs to ensure they're available
@@ -79,6 +90,9 @@ ls -la $SPARK_JARS_DIR/
 
 # Set environment variable for Spark to find the JARs
 export SPARK_CLASSPATH="$SPARK_JARS_DIR/*"
+
+export MODEL_DIR="$MODEL_DIR"
+
 
 # Start the Spark master service in the background
 log "Starting Spark master service..."
