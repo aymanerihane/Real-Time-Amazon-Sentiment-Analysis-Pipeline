@@ -19,20 +19,20 @@ RUN cat /spark_version.txt
 WORKDIR /app
 
 # Copy and fix requirements
-COPY requirements.txt /app/requirements.txt
+COPY requirements.txt /opt/bitnami/spark/requirements.txt
 
 # Explicitly install pandas and other essential packages
 RUN pip3 install --no-cache-dir --upgrade pip && \
     pip3 install --no-cache-dir setuptools wheel && \
     pip3 install --no-cache-dir pandas numpy nltk pymongo joblib && \
-    pip3 install --no-cache-dir -r /app/requirements.txt
+    pip3 install --no-cache-dir -r /opt/bitnami/spark/requirements.txt
 
 # Create NLTK data directory and set permissions
 RUN mkdir -p /opt/nltk_data && \
     chmod -R 777 /opt/nltk_data
 
 # Download NLTK data
-RUN python3 -c "import nltk; nltk.data.path.append('/opt/nltk_data'); nltk.download('punkt', download_dir='/opt/nltk_data'); nltk.download('stopwords', download_dir='/opt/nltk_data'); nltk.download('wordnet', download_dir='/opt/nltk_data')"
+# RUN python3 -c "import nltk; nltk.data.path.append('/opt/nltk_data'); nltk.download('punkt', download_dir='/opt/nltk_data'); nltk.download('stopwords', download_dir='/opt/nltk_data'); nltk.download('wordnet', download_dir='/opt/nltk_data')"
 
 # Copy application files
 COPY train_model.py /app/
@@ -49,8 +49,7 @@ RUN dos2unix /app/start.sh && \
     chmod +x /app/start.sh
 
 # Create script to set up worker environment
-RUN echo '#!/bin/bash\npip install pandas numpy nltk pymongo joblib scikit-learn' > /opt/bitnami/spark/sbin/spark-worker-setup.sh && \
-    chmod +x /opt/bitnami/spark/sbin/spark-worker-setup.sh
+# RUN chmod +x /opt/bitnami/spark/sbin/spark-worker-setup.sh
 
 # Add Kafka JARs to Spark classpath - Using the exact same version as Spark 3.5.x
 RUN mkdir -p /opt/bitnami/spark/jars
@@ -71,7 +70,7 @@ ENV PATH="/app:${PATH}"
 ENV SPARK_CLASSPATH="/opt/bitnami/spark/jars/*"
 
 # Set Spark configuration for dependencies
-ENV PYSPARK_SUBMIT_ARGS="--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 pyspark-shell"
+ENV PYSPARK_SUBMIT_ARGS="--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.5 pyspark-shell"
 
 # Switch back to non-root user
 USER 1001

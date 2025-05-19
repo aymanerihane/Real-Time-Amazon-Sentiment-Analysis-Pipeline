@@ -375,29 +375,29 @@ services:
 #        WEB SERVICE
 ##############################
 
-  # backend-service:
-  #   build: ./backend-service
-  #   container_name: backend-service
-  #   ports:
-  #     - "8006:8006"
-  #   depends_on:
-  #     kafka-init:
-  #       condition: service_completed_successfully
-  #     mongodb:
-  #       condition: service_healthy
-  #     mongodb-init:
-  #       condition: service_completed_successfully
-  #   environment:
-  #     - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094
-  #     - KAFKA_TOPIC_1=amazon-reviews-raw
-  #     - KAFKA_TOPIC_2=sentiment-results
-  #     - MONGODB_URI=mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin
-  #     - MONGODB_DATABASE=amazon_reviews
-  #   volumes:
-  #     - ./backend-service:/app
-  #     - backend_data:/data
-  #   networks:
-  #     - kafka-net
+  backend-service:
+    build: ./backend-service
+    container_name: backend-service
+    ports:
+      - "8006:8006"
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      mongodb:
+        condition: service_healthy
+      mongodb-init:
+        condition: service_completed_successfully
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka1:9092,kafka2:9094
+      - KAFKA_TOPIC_1=amazon-reviews-raw
+      - KAFKA_TOPIC_2=sentiment-results
+      - MONGODB_URI=mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin
+      - MONGODB_DATABASE=amazon_reviews
+    volumes:
+      - ./backend-service:/app
+      - backend_data:/data
+    networks:
+      - kafka-net
 
   # # Frontend Service
   # frontend-service:
