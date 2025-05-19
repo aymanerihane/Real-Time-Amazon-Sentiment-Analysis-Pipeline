@@ -4,7 +4,7 @@ services:
 #           KAFKA
 ##############################
   kafka1:
-    image: bitnami/kafka:latest
+    image: confluentinc/cp-kafka:7.3.0
     container_name: kafka1
     ports:
       - "9092:9092"
@@ -38,7 +38,7 @@ services:
       start_period: 120s
    
   kafka2:
-    image: bitnami/kafka:latest
+    image: confluentinc/cp-kafka:7.3.0
     container_name: kafka2
     ports:
       - "9094:9094"
@@ -313,6 +313,7 @@ services:
         /opt/bitnami/spark/sbin/start-worker.sh spark://spark-master:7077
       "
 
+
 ##############################
 #     Reviews Collector
 ##############################
@@ -375,6 +376,7 @@ services:
 #        WEB SERVICE
 ##############################
 
+
   backend-service:
     build: ./backend-service
     container_name: backend-service
@@ -398,6 +400,7 @@ services:
       - backend_data:/data
     networks:
       - kafka-net
+
 
   # # Frontend Service
   # frontend-service:

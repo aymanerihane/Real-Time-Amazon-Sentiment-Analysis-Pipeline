@@ -39,6 +39,7 @@ MONGO_URI = os.getenv('MONGO_URI', 'mongodb://root:example@mongodb:27017/amazon_
 MONGO_DB = os.getenv('MONGO_DB', 'amazon_reviews')
 MONGO_COLLECTION = os.getenv('MONGO_COLLECTION', 'sentiment_results')
 
+
 # Text preprocessing functions as pandas UDF
 @pandas_udf(StringType())
 def preprocess_text(texts: pd.Series) -> pd.Series:
@@ -99,6 +100,7 @@ def get_review_schema():
 def load_model(spark=None):
     """Load the pre-trained sentiment analysis model and broadcast it"""
     try:
+
         logger.info(f"Loading model from {MODEL_PATH}")
         model = joblib.load(MODEL_PATH, mmap_mode='r')
         if spark is not None:
@@ -192,6 +194,7 @@ def main():
             .option("startingOffsets", "latest") \
             .load()
         
+
         # Parse JSON data and process
         parsed_df = kafka_df.selectExpr("CAST(value AS STRING)") \
             .select(from_json(col("value"), get_review_schema()).alias("data")) \
@@ -217,6 +220,7 @@ def main():
             )
         
         # Add debug stream to console
+
         debug_query = result_df.writeStream \
             .format("console") \
             .outputMode("append") \
@@ -258,6 +262,7 @@ def main():
     finally:
         if 'spark' in locals():
             spark.stop()
+
 
 if __name__ == "__main__":
     main()

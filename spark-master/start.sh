@@ -9,6 +9,7 @@ RESOURCES_DIR="/app/resources"
 MODEL_PATH="$RESOURCES_DIR/sentiment_model_sklearn.pkl"
 SPARK_JARS_DIR="/opt/bitnami/spark/jars"
 
+
 # Function to log messages with timestamp
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
