@@ -38,11 +38,11 @@ export default function RealtimeFeed({
         
         <div className="space-y-6">
           <PieChart positiveCount={positiveCount} neutralCount={neutralCount} negativeCount={negativeCount} />
-          <SentimentStats 
+          {/* <SentimentStats 
             positiveCount={positiveCount}
             neutralCount={neutralCount}
             negativeCount={negativeCount}
-          />
+          /> */}
           <TopProducts />
         </div>
       </div>

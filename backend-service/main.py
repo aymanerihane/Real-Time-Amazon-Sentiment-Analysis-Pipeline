@@ -178,5 +178,14 @@ async def health_check():
     return {"status": "healthy"}
 
 
+# GET THE LIST OF REVIEWS
+@app.get("/api/reviews", response_model=List[ReviewBase])
+async def get_reviews():
+    logger.debug("Fetching all reviews")
+    reviews = await ReviewService.get_all_reviews()
+    return reviews
+
+
+
 
 

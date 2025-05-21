@@ -15,21 +15,35 @@ export default function DashboardFilters({ onFilterChange }) {
 
     // Handle incoming messages
     const handleMessage = (message) => {
-      if (message.type === 'new_sentiment') {
+      if (message.type === 'new_sentiment' || message.type === 'new_review') {
+        const data = message.data || message;
+        if (!data || !data.asin) return;
+        
+        // Map sentiment value to standard category
+        let sentimentCategory = 'neutral';
+        if (data.sentiment === 2 || data.sentiment === 'positive' || data.sentiment_label === 'Positive') {
+          sentimentCategory = 'positive';
+        } else if (data.sentiment === 0 || data.sentiment === 'negative' || data.sentiment_label === 'Negative') {
+          sentimentCategory = 'negative';
+        }
+        
         setProducts(prevProducts => {
           const newProducts = { ...prevProducts };
-          const asin = message.data.asin;
+          const asin = data.asin;
           
           if (!newProducts[asin]) {
             newProducts[asin] = {
-              title: message.data.title,
+              asin: asin,
+              title: data.title || data.summary || `Product ${asin}`,
               reviews: []
             };
           }
           
+          const timestamp = new Date(data.processed_at || data.prediction_time || new Date()).getTime();
+          
           newProducts[asin].reviews.push({
-            sentiment: message.data.sentiment,
-            timestamp: new Date(message.data.processed_at).getTime()
+            sentiment: sentimentCategory,
+            timestamp: timestamp
           });
           
           return newProducts;
@@ -48,14 +62,18 @@ export default function DashboardFilters({ onFilterChange }) {
     const { name, value } = e.target;
     const newFilters = { ...filters, [name]: value };
     setFilters(newFilters);
-    onFilterChange(newFilters);
+    if (onFilterChange) {
+      onFilterChange(newFilters);
+    }
   };
 
   // Get unique ASINs for the dropdown
-  const productOptions = Object.entries(products).map(([asin, data]) => ({
-    value: asin,
-    label: data.title
-  }));
+  const productOptions = Object.entries(products)
+    .map(([asin, data]) => ({
+      value: asin,
+      label: data.title ? `${asin}: ${data.title}` : asin
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -110,7 +128,7 @@ export default function DashboardFilters({ onFilterChange }) {
       <div className="flex items-end">
         <button
           className="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition dark:bg-indigo-700 dark:hover:bg-indigo-600"
-          onClick={() => onFilterChange(filters)}
+          onClick={() => onFilterChange && onFilterChange(filters)}
         >
           Apply Filters
         </button>

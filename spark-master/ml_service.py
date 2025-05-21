@@ -25,9 +25,9 @@ KAFKA_INPUT_TOPIC = os.getenv("KAFKA_INPUT_TOPIC", "amazon-reviews-raw")
 KAFKA_OUTPUT_TOPIC = os.getenv("KAFKA_OUTPUT_TOPIC", "sentiment-results")
 
 # MongoDB configuration
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://root:example@mongodb:27019/amazon_reviews?authSource=admin")
-MONGODB_DATABASE = "amazon_reviews"
-MONGODB_COLLECTION = "sentiment_analysis"
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin")
+MONGODB_DATABASE = os.getenv("MONGODB_DATABASE", "amazon_reviews")
+MONGODB_COLLECTION = os.getenv("MONGODB_COLLECTION", "sentiment_results")
 
 # Model path
 MODEL_PATH = "/model/sentiment_model"

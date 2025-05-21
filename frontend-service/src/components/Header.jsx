@@ -9,12 +9,28 @@ export default function Header({ darkMode, toggleDarkMode, activeTab, setActiveT
     const statuses = ['Connected', 'Connecting...', 'Disconnected'];
     let index = 0;
     
+    const ws = new WebSocket('ws://localhost:8006/ws/reviews'); // Adjust URL as needed
+    
+    ws.onopen = () => setConnectionStatus('Connected');
+    ws.onclose = () => setConnectionStatus('Disconnected');
+    ws.onerror = () => setConnectionStatus('Disconnected');
+    
+    // Ping server every 5 seconds to check connection
     const interval = setInterval(() => {
-      setConnectionStatus(statuses[index]);
-      index = (index + 1) % statuses.length;
+      if (ws.readyState === WebSocket.OPEN) {
+      setConnectionStatus('Connected');
+      } else {
+      setConnectionStatus('Disconnected');
+      }
     }, 5000);
 
-    return () => clearInterval(interval);
+    // Clean up WebSocket connection
+    return () => {
+      ws.close();
+      clearInterval(interval);
+    };
+
+    // return () => clearInterval(interval);
   }, []);
 
   // Determine connection status color
@@ -38,7 +54,7 @@ export default function Header({ darkMode, toggleDarkMode, activeTab, setActiveT
           
           <div className="flex items-center space-x-4">
             {/* Dark/Light Mode Toggle */}
-            <DarkModeToggle darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
+            {/* <DarkModeToggle darkMode={darkMode} toggleDarkMode={toggleDarkMode} /> */}
             {/* Connection Status Indicator */}
             <div className="flex items-center">
               <span className="relative flex h-3 w-3 mr-2">
@@ -76,6 +92,16 @@ export default function Header({ darkMode, toggleDarkMode, activeTab, setActiveT
               }`}
             >
               Analytics Dashboard
+            </button>
+            <button 
+              onClick={() => setActiveTab('reviews')}
+              className={`whitespace-nowrap py-2 px-4 border-b-2 font-medium text-sm ${
+                activeTab === 'reviews' 
+                  ? 'border-white text-white' 
+                  : 'border-transparent text-white/70 hover:text-white/90'
+              }`}
+            >
+              Offline Reviews
             </button>
           </nav>
         </div>

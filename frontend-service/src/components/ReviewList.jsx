@@ -8,8 +8,8 @@ export default function ReviewList({ reviews }) {
               <p>Waiting for incoming reviews...</p>
             </div>
           ) : (
-            reviews.map(review => (
-              <ReviewItem key={review.id} review={review} />
+            reviews.map((review, index) => (
+              <ReviewItem key={index + '-' + (review.asin || '') + '-' + Date.now()} review={review} />
             ))
           )}
         </div>
@@ -35,28 +35,51 @@ export default function ReviewList({ reviews }) {
       neutral: 'Neutral',
       negative: 'Negative'
     };
+
+    // Safely format date
+    const formatDate = (dateString) => {
+      if (!dateString) return 'Just now';
+      const date = new Date(dateString);
+      return date instanceof Date && !isNaN(date.getTime()) ? 
+        date.toLocaleTimeString() : 'Just now';
+    };
+    
+    // Safe percentage calculation
+    const getConfidenceDisplay = () => {
+      if (!review.confidence && review.confidence !== 0) {
+        return '';
+      }
+      
+      const confidenceValue = parseFloat(review.confidence);
+      if (isNaN(confidenceValue)) {
+        return '';
+      }
+      
+      return ` (${(confidenceValue * 100).toFixed(0)}%)`;
+    };
   
     return (
-      <div className={`p-4 rounded-lg shadow-sm ${sentimentClasses[review.sentiment]}`}>
+      <div className={`p-4 rounded-lg shadow-sm ${sentimentClasses[review.sentiment] || 'bg-gray-50 dark:bg-gray-800'}`}>
         <div className="flex justify-between items-start mb-2">
           <div className="flex items-center space-x-2">
             <span className="bg-white dark:bg-gray-700 p-1 rounded-full shadow">
-              <i className={`fas ${sentimentIcons[review.sentiment]}`}></i>
+              <i className={`fas ${sentimentIcons[review.sentiment] || 'fa-comment text-gray-500'}`}></i>
             </span>
             <span className="font-medium dark:text-gray-200">
-              {sentimentLabels[review.sentiment]} ({(review.confidence * 100).toFixed(0)}%)
+              {sentimentLabels[review.sentiment] || 'Unknown'}
+              {getConfidenceDisplay()}
             </span>
           </div>
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            {new Date(review.timestamp).toLocaleTimeString()}
+            {formatDate(review.date || review.processedAt)}
           </div>
         </div>
         <div className="mb-2">
           <span className="bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-xs px-2 py-1 rounded">
-            ASIN: {review.asin}
+            ASIN: {review.asin || 'N/A'}
           </span>
         </div>
-        <p className="text-gray-700 dark:text-gray-300">"{review.reviewText}"</p>
+        <p className="text-gray-700 dark:text-gray-300">"{review.reviewText || 'No text provided'}"</p>
       </div>
     );
   }

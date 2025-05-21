@@ -90,12 +90,18 @@ export default function App() {
             neutralCount={neutralCount}
             negativeCount={negativeCount}
           />
-        ) : (
+        ) : activeTab === 'dashboard' ? (
           <Dashboard
             positiveCount={positiveCount}
             neutralCount={neutralCount}
             negativeCount={negativeCount}
           />
+        ): (
+          <div className="p-6">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-6">
+              No data available
+            </h2>
+          </div>
         )}
       </div>
     </div>
