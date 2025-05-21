@@ -26,20 +26,24 @@ export default function App() {
 
   const addReviewToFeed = (review) => {
     if (!review) return;
-    console.log("review:",review);
+    console.log("Adding review to feed:", review);
     
+    // Check the sentiment and increment the appropriate counter
     if (review.sentiment === 'positive') {
       setPositiveCount(prev => prev + 1);
     } else if (review.sentiment === 'neutral') {
       setNeutralCount(prev => prev + 1);
-    } else {
+    } else if (review.sentiment === 'negative') {
       setNegativeCount(prev => prev + 1);
+    } else {
+      console.warn("Unknown sentiment value:", review.sentiment);
     }
+    
     setReviews(prev => [review, ...prev].slice(0, 100));
   };
 
   const filteredReviews = reviews.filter(review => 
-    review.asin.toLowerCase().includes(asinFilter.toLowerCase())
+    review && review.asin && review.asin.toLowerCase().includes((asinFilter || '').toLowerCase())
   );
 
   useEffect(() => {

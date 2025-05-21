@@ -22,11 +22,16 @@ export const connectWebSocket = () => {
     ws.onmessage = (event) => {
         try {
             const message = JSON.parse(event.data);
-            console.log("message:",message)
+            console.log("Received WebSocket message:", message);
+            
+            if (message.type === 'new_sentiment' || message.type === 'new_review') {
+                console.log(`Processing ${message.type} data:`, message.data);
+            }
+            
             // Notify all registered handlers
             messageHandlers.forEach(handler => handler(message));
         } catch (error) {
-            console.error('Error processing WebSocket message:', error);
+            console.error('Error processing WebSocket message:', error, 'Raw data:', event.data);
         }
     };
 
@@ -52,21 +57,33 @@ export const removeMessageHandler = (handler) => {
 
 // Process incoming review data
 export const processReviewData = (data) => {
-
-    console.log("data:",data)
+    console.log("data:", data);
     if (!data) return null;
     
+    // Get the content based on message type
+    const content = data.data || data;
+    
+    // Convert numeric sentiment to string if needed
+    let sentimentLabel = content.sentiment_label || '';
+    if (content.sentiment !== undefined && !sentimentLabel) {
+        // Map numeric sentiment to string value if sentiment_label is not provided
+        if (content.sentiment === 2) sentimentLabel = 'positive';
+        else if (content.sentiment === 1) sentimentLabel = 'neutral';
+        else if (content.sentiment === 0) sentimentLabel = 'negative';
+    }
+    
+    // Handle different field naming conventions
     return {
-        asin: data.asin,
-        title: data.title,
-        reviewText: data.reviewText,
-        overall: data.overall,
-        reviewerName: data.reviewer_name,
-        date: data.date,
-        helpfulVotes: parseInt(data.helpful_votes) || 0,
-        totalVotes: parseInt(data.total_votes) || 0,
-        sentiment: data.sentiment,
-        processedAt: data.processed_at
+        asin: content.asin || content.ASIN || content.product_id || 'unknown',
+        title: content.title || content.product_title || content.summary || '',
+        reviewText: content.reviewText || content.review_text || content.text || '',
+        overall: content.overall || content.rating || content.stars || 0,
+        reviewerName: content.reviewerName || content.reviewer_name || 'Anonymous',
+        date: content.date || content.reviewTime || content.review_time || content.prediction_time || new Date().toISOString(),
+        helpfulVotes: parseInt(content.helpfulVotes || content.helpful_votes || 0),
+        totalVotes: parseInt(content.totalVotes || content.total_votes || 0),
+        sentiment: sentimentLabel.toLowerCase(),
+        processedAt: content.processedAt || content.processed_at || content.prediction_time || new Date().toISOString()
     };
 };
 

@@ -7,7 +7,7 @@ import asyncio
 import json
 from database import Database
 from service import ReviewService, SentimentService
-from kafka_client import consume_messages, consume_sentiment_results
+from kafka_client import consume_messages
 import logging
 
 # Configure logging
