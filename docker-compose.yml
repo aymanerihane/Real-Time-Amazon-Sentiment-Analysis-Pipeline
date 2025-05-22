@@ -170,23 +170,11 @@ services:
         mongosh --host mongodb -u root -p example --authenticationDatabase admin --eval '
           db = db.getSiblingDB(\"amazon_reviews\");
           collections = db.getCollectionNames();
-          if (!collections.includes(\"reviews\")) {
-            print(\"Creating reviews collection...\");
-            db.createCollection(\"reviews\");
-          } else {
-            print(\"reviews collection already exists\");
-          }
           if (!collections.includes(\"sentiment_analysis\")) {
             print(\"Creating sentiment_analysis collection...\");
             db.createCollection(\"sentiment_analysis\");
           } else {
             print(\"sentiment_analysis collection already exists\");
-          }
-          if (!collections.includes(\"metrics\")) {
-            print(\"Creating metrics collection...\");
-            db.createCollection(\"metrics\");
-          } else {
-            print(\"metrics collection already exists\");
           }
           print(\"All collections verified.\");
           exit(0);
@@ -219,6 +207,7 @@ services:
       - MONGODB_URI=mongodb://root:example@mongodb:27017/amazon_reviews?authSource=admin
       - MONGODB_DATABASE=amazon_reviews
       - SPARK_MASTER_PORT=7077
+      - MONGODB_COLLECTION=sentiment_analysis
     ports:
       - "7077:7077"
       - "8080:8080"

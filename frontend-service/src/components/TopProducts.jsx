@@ -1,44 +1,21 @@
 import { useEffect, useState } from 'react';
-import { connectWebSocket, addMessageHandler, removeMessageHandler } from '../utils/dataUtils';
+import { connectWebSocket, addMessageHandler, removeMessageHandler, globalDataStore } from '../utils/dataUtils';
 
 export default function TopProducts() {
-  const [products, setProducts] = useState({});
+  const [topProducts, setTopProducts] = useState([]);
 
   useEffect(() => {
     // Connect to WebSocket
     connectWebSocket();
 
+    // Initial load from global store
+    updateTopProductsFromGlobalStore();
+
     // Handle incoming messages
     const handleMessage = (message) => {
       if (message.type === 'new_sentiment' || message.type === 'new_review') {
-        const data = message.data || message;
-        if (!data || !data.asin) return;
-        
-        setProducts(prevProducts => {
-          const newProducts = { ...prevProducts };
-          const asin = data.asin;
-          
-          if (!newProducts[asin]) {
-            newProducts[asin] = {
-              asin: asin,
-              title: data.title || data.summary || `Product ${asin}`,
-              positive: 0,
-              neutral: 0,
-              negative: 0
-            };
-          }
-          
-          // Determine sentiment count to increment
-          let sentimentType = 'neutral';
-          if (data.sentiment === 2 || data.sentiment === 'positive' || data.sentiment_label === 'Positive') {
-            sentimentType = 'positive';
-          } else if (data.sentiment === 0 || data.sentiment === 'negative' || data.sentiment_label === 'Negative') {
-            sentimentType = 'negative';
-          }
-          
-          newProducts[asin][sentimentType]++;
-          return newProducts;
-        });
+        // Update from global store when new data arrives
+        updateTopProductsFromGlobalStore();
       }
     };
 
@@ -49,21 +26,26 @@ export default function TopProducts() {
     };
   }, []);
 
-  // Calculate top products by total reviews and positive percentage
-  const topProducts = Object.entries(products)
-    .map(([asin, data]) => {
-      const total = data.positive + data.neutral + data.negative;
-      const positivePercent = total > 0 ? Math.round((data.positive / total) * 100) : 0;
-      
-      return {
-        asin,
-        title: data.title || `Product ${asin}`,
-        positivePercent,
-        total
-      };
-    })
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 5);
+  // Function to update top products from global store
+  const updateTopProductsFromGlobalStore = () => {
+    // Map the global store data to our display format
+    const formattedTopProducts = Object.entries(globalDataStore.asinReviewData)
+      .map(([asin, data]) => {
+        const total = Object.values(data.sentimentCounts).reduce((sum, count) => sum + count, 0);
+        const positivePercent = total > 0 ? Math.round((data.sentimentCounts.positive / total) * 100) : 0;
+        
+        return {
+          asin,
+          title: data.title || `Product ${asin}`,
+          positivePercent,
+          total
+        };
+      })
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+    
+    setTopProducts(formattedTopProducts);
+  };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm">

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import './App.css';
 import { Chart as ChartJS, registerables } from 'chart.js';
 import { connectWebSocket, addMessageHandler, removeMessageHandler, processReviewData } from './utils/dataUtils';
+import SentimentDashboard from './components/SentimentDashboard';
 ChartJS.register(...registerables);
 
 import Header from './components/Header';
@@ -97,11 +98,7 @@ export default function App() {
             negativeCount={negativeCount}
           />
         ): (
-          <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-6">
-              No data available
-            </h2>
-          </div>
+          <SentimentDashboard />
         )}
       </div>
     </div>

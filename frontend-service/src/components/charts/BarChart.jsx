@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Chart as ChartJS, registerables } from 'chart.js';
-import { connectWebSocket, addMessageHandler, removeMessageHandler } from '../../utils/dataUtils';
+import { connectWebSocket, addMessageHandler, removeMessageHandler, globalDataStore } from '../../utils/dataUtils';
 
 // Register the chart components
 ChartJS.register(...registerables);
@@ -11,7 +11,6 @@ export default function BarChart({ filters = {} }) {
   // Generate a truly unique ID for this chart instance
   const [chartId] = useState(`bar-chart-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`);
   const [reviewData, setReviewData] = useState({});
-  const [allData, setAllData] = useState({});
 
   // Function to safely destroy chart
   const destroyChart = () => {
@@ -25,49 +24,18 @@ export default function BarChart({ filters = {} }) {
     // Connect to WebSocket
     connectWebSocket();
 
-    // Handle incoming messages
+    // Handle incoming messages - just for component updates when data changes
     const handleMessage = (message) => {
       if (message.type === 'new_sentiment' || message.type === 'new_review') {
-        const data = message.data || message;
-        if (!data || !data.asin) return;
-        
-        // Map sentiment value to standard category
-        let sentimentCategory = 'neutral';
-        if (data.sentiment === 2 || data.sentiment === 'positive' || data.sentiment_label === 'Positive') {
-          sentimentCategory = 'positive';
-        } else if (data.sentiment === 0 || data.sentiment === 'negative' || data.sentiment_label === 'Negative') {
-          sentimentCategory = 'negative';
-        }
-        
-        // Get timestamp for filtering by time range
-        const timestamp = new Date(data.processed_at || data.prediction_time || new Date()).getTime();
-        
-        setAllData(prevData => {
-          const newData = { ...prevData };
-          const asin = data.asin;
-          
-          if (!newData[asin]) {
-            newData[asin] = {
-              asin: asin,
-              title: data.title || data.summary || `Product ${asin}`,
-              sentimentCounts: {
-                positive: 0,
-                neutral: 0,
-                negative: 0
-              },
-              timestamp: timestamp
-            };
-          }
-          
-          // Increment the appropriate sentiment counter
-          newData[asin].sentimentCounts[sentimentCategory]++;
-          
-          return newData;
-        });
+        // Update chart with filtered data from global store
+        applyFiltersToData();
       }
     };
 
     addMessageHandler(handleMessage);
+
+    // Initial data load from global store
+    applyFiltersToData();
 
     return () => {
       removeMessageHandler(handleMessage);
@@ -76,8 +44,13 @@ export default function BarChart({ filters = {} }) {
     };
   }, []);
 
-  // Apply filters when they change or when allData changes
+  // Apply filters when they change
   useEffect(() => {
+    applyFiltersToData();
+  }, [filters]);
+
+  // Function to apply filters to global data
+  const applyFiltersToData = () => {
     let timeRangeFilter;
     const now = Date.now();
     
@@ -101,7 +74,7 @@ export default function BarChart({ filters = {} }) {
     
     // Filter data based on filters
     const filteredData = {};
-    Object.entries(allData).forEach(([asin, data]) => {
+    Object.entries(globalDataStore.asinReviewData).forEach(([asin, data]) => {
       // Apply ASIN filter if not 'all'
       if (filters.asin !== 'all' && asin !== filters.asin) return;
       
@@ -125,7 +98,7 @@ export default function BarChart({ filters = {} }) {
     });
     
     setReviewData(filteredData);
-  }, [filters, allData]);
+  };
 
   useEffect(() => {
     // First destroy any existing chart

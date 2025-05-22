@@ -4,6 +4,17 @@ import { DateTime } from 'luxon';
 let ws = null;
 let messageHandlers = new Set();
 
+// Global state for chart data persistence across tab switches
+export const globalDataStore = {
+    sentimentTimeSeriesData: {
+        positive: [],
+        neutral: [], 
+        negative: []
+    },
+    asinReviewData: {},
+    topProducts: []
+};
+
 export const connectWebSocket = () => {
     if (ws) return; // Already connected
 
@@ -26,6 +37,9 @@ export const connectWebSocket = () => {
             
             if (message.type === 'new_sentiment' || message.type === 'new_review') {
                 console.log(`Processing ${message.type} data:`, message.data);
+                
+                // Update global data store with new sentiment data
+                updateGlobalDataStore(message);
             }
             
             // Notify all registered handlers
@@ -46,6 +60,72 @@ export const connectWebSocket = () => {
         setTimeout(connectWebSocket, 5000);
     };
 };
+
+// Function to update global data store with incoming data
+function updateGlobalDataStore(message) {
+    const data = message.data || message;
+    if (!data) return;
+    
+    // Update sentiment time series data
+    if (data.sentiment !== undefined || data.sentiment_label) {
+        // Convert sentiment to standard format
+        let sentimentCategory;
+        if (data.sentiment === 2 || data.sentiment === 'positive' || data.sentiment_label === 'Positive') {
+            sentimentCategory = 'positive';
+        } else if (data.sentiment === 1 || data.sentiment === 'neutral' || data.sentiment_label === 'Neutral') {
+            sentimentCategory = 'neutral';
+        } else if (data.sentiment === 0 || data.sentiment === 'negative' || data.sentiment_label === 'Negative') {
+            sentimentCategory = 'negative';
+        } else {
+            return; // Skip unknown sentiment
+        }
+        
+        const timestamp = new Date(data.processed_at || data.prediction_time || new Date()).getTime();
+        
+        // Add to time series data
+        globalDataStore.sentimentTimeSeriesData[sentimentCategory].push({
+            x: timestamp,
+            y: 1,
+            asin: data.asin || 'unknown'
+        });
+        
+        // Update ASIN review data
+        if (data.asin) {
+            const asin = data.asin;
+            
+            if (!globalDataStore.asinReviewData[asin]) {
+                globalDataStore.asinReviewData[asin] = {
+                    asin: asin,
+                    title: data.title || data.summary || `Product ${asin}`,
+                    sentimentCounts: {
+                        positive: 0,
+                        neutral: 0,
+                        negative: 0
+                    },
+                    timestamp: timestamp
+                };
+            }
+            
+            // Increment sentiment counter
+            globalDataStore.asinReviewData[asin].sentimentCounts[sentimentCategory]++;
+            
+            // Update top products list
+            updateTopProducts();
+        }
+    }
+}
+
+// Calculate and update top products list
+function updateTopProducts() {
+    globalDataStore.topProducts = Object.entries(globalDataStore.asinReviewData)
+        .sort(([, a], [, b]) => {
+            const totalA = Object.values(a.sentimentCounts).reduce((sum, count) => sum + count, 0);
+            const totalB = Object.values(b.sentimentCounts).reduce((sum, count) => sum + count, 0);
+            return totalB - totalA;
+        })
+        .slice(0, 5)
+        .map(([asin, data]) => ({ asin, ...data }));
+}
 
 export const addMessageHandler = (handler) => {
     messageHandlers.add(handler);
@@ -71,6 +151,7 @@ export const processReviewData = (data) => {
         else if (content.sentiment === 1) sentimentLabel = 'neutral';
         else if (content.sentiment === 0) sentimentLabel = 'negative';
     }
+    console.log("content:", content);
     
     // Handle different field naming conventions
     return {
@@ -83,6 +164,7 @@ export const processReviewData = (data) => {
         helpfulVotes: parseInt(content.helpfulVotes || content.helpful_votes || 0),
         totalVotes: parseInt(content.totalVotes || content.total_votes || 0),
         sentiment: sentimentLabel.toLowerCase(),
+        confidence: content.confidence || content.sentiment_confidence || 0,
         processedAt: content.processedAt || content.processed_at || content.prediction_time || new Date().toISOString()
     };
 };

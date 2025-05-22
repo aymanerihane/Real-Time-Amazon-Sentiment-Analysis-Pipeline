@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Chart as ChartJS, registerables } from 'chart.js';
-import { connectWebSocket, addMessageHandler, removeMessageHandler } from '../../utils/dataUtils';
+import { connectWebSocket, addMessageHandler, removeMessageHandler, globalDataStore } from '../../utils/dataUtils';
+import 'chartjs-adapter-date-fns'; // Import date adapter
 
 // Register the chart components
 ChartJS.register(...registerables);
@@ -11,38 +12,19 @@ export default function LineChart({ filters = {} }) {
   // Generate a truly unique ID for this chart instance based on timestamp and random string
   const [chartId] = useState(`line-chart-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`);
   
-  // Store all data points for filtering
-  const [allData, setAllData] = useState({
-    positive: [],
-    neutral: [], 
-    negative: []
+  // Initialize with filtered data from the global store
+  const [timeSeriesData, setTimeSeriesData] = useState(() => {
+    return { ...globalDataStore.sentimentTimeSeriesData };
   });
   
-  // Initialize with some sample data points to ensure the chart displays properly
-  const [timeSeriesData, setTimeSeriesData] = useState(() => {
-    // Create sample data points for the last 24 hours
-    const now = Date.now();
-    const initialData = {
-      positive: [],
-      neutral: [],
-      negative: []
-    };
-    
-    // Add sample points every 6 hours for the past 24 hours
-    for (let i = 0; i < 4; i++) {
-      const timePoint = now - (i * 6 * 60 * 60 * 1000);
-      initialData.positive.push({ x: timePoint, y: 0 });
-      initialData.neutral.push({ x: timePoint, y: 0 });
-      initialData.negative.push({ x: timePoint, y: 0 });
-    }
-    
-    return initialData;
-  });
-
   // Function to safely destroy chart
   const destroyChart = () => {
     if (chartInstance.current) {
-      chartInstance.current.destroy();
+      try {
+        chartInstance.current.destroy();
+      } catch (e) {
+        console.error("Error destroying chart:", e);
+      }
       chartInstance.current = null;
     }
   };
@@ -51,44 +33,12 @@ export default function LineChart({ filters = {} }) {
     // Connect to WebSocket
     connectWebSocket();
 
-    // Handle incoming messages
+    // Handle incoming messages - just for component updates when data changes
     const handleMessage = (message) => {
       if (message.type === 'new_sentiment' || message.type === 'new_review') {
-        const data = message.data || message;
-        if (!data || !data.sentiment) return;
-
-        // Get timestamp from the data or use current time
-        const timestamp = new Date(data.processed_at || data.prediction_time || new Date()).getTime();
-        
-        // Convert the sentiment to a standardized format (positive, neutral, negative)
-        let sentimentCategory;
-        if (data.sentiment === 2 || data.sentiment === 'positive' || data.sentiment_label === 'Positive') {
-          sentimentCategory = 'positive';
-        } else if (data.sentiment === 1 || data.sentiment === 'neutral' || data.sentiment_label === 'Neutral') {
-          sentimentCategory = 'neutral';
-        } else if (data.sentiment === 0 || data.sentiment === 'negative' || data.sentiment_label === 'Negative') {
-          sentimentCategory = 'negative';
-        } else {
-          console.warn('Unknown sentiment value:', data.sentiment);
-          return; // Skip this message as we don't know how to categorize it
-        }
-
-        setAllData(prevData => {
-          const newData = {
-            positive: [...prevData.positive],
-            neutral: [...prevData.neutral],
-            negative: [...prevData.negative]
-          };
-
-          // Add new data point to the appropriate category with ASIN for filtering
-          newData[sentimentCategory].push({
-            x: timestamp,
-            y: 1,
-            asin: data.asin || 'unknown'
-          });
-
-          return newData;
-        });
+        // Use the global data without modifying it
+        // This will trigger a re-render when new data arrives
+        setTimeSeriesData({ ...globalDataStore.sentimentTimeSeriesData });
       }
     };
 
@@ -101,7 +51,7 @@ export default function LineChart({ filters = {} }) {
     };
   }, []);
 
-  // Apply filters when they change or when allData changes
+  // Apply filters when they change or when timeSeriesData changes
   useEffect(() => {
     let timeRangeFilter;
     const now = Date.now();
@@ -131,8 +81,8 @@ export default function LineChart({ filters = {} }) {
       negative: []
     };
 
-    Object.keys(allData).forEach(sentiment => {
-      filteredData[sentiment] = allData[sentiment].filter(point => {
+    Object.keys(globalDataStore.sentimentTimeSeriesData).forEach(sentiment => {
+      filteredData[sentiment] = globalDataStore.sentimentTimeSeriesData[sentiment].filter(point => {
         // Apply time range filter
         if (point.x < timeRangeFilter) return false;
         
@@ -148,7 +98,7 @@ export default function LineChart({ filters = {} }) {
     
     // Update displayed data
     setTimeSeriesData(filteredData);
-  }, [filters, allData]);
+  }, [filters, globalDataStore.sentimentTimeSeriesData]);
 
   // Chart rendering effect
   useEffect(() => {
@@ -158,8 +108,10 @@ export default function LineChart({ filters = {} }) {
     // Return early if canvas is not available
     if (!chartRef.current) return;
 
+    let chartCreationTimeout;
+    
     // Use a longer timeout to ensure DOM is ready and previous chart is fully cleaned up
-    const timer = setTimeout(() => {
+    chartCreationTimeout = setTimeout(() => {
       try {
         // Check again if the canvas reference is still valid
         if (!chartRef.current) return;
@@ -246,7 +198,7 @@ export default function LineChart({ filters = {} }) {
     }, 100); // Longer delay to ensure cleanup
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(chartCreationTimeout);
       destroyChart();
     };
   }, [timeSeriesData, chartId]);
