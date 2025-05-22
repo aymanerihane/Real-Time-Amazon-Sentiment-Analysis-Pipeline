@@ -85,7 +85,7 @@ Ce projet met en place une pipeline de traitement de données en temps réel pou
 
 | Composant | Technologie |
 |-----------|-------------|
-| Scraping | Python, BeautifulSoup |
+| Scraping | Python, BeautifulSoup , Selenium |
 | Streaming | Apache Kafka (KRaft) |
 | Traitement | Apache Spark (MLlib) |
 | Stockage | MongoDB |
