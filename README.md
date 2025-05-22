@@ -50,7 +50,7 @@ Ce projet met en place une pipeline de traitement de données en temps réel pou
    docker-compose up spark-master spark-worker-1 spark-worker-2
    ```
 
-2. **Lancer l'entraînement du modèle depuis le conteneur Spark Master** :
+2. **Lancer l'entraînement du modèle from local** :
    ```bash
    spark-master/start_train.bat
    ```
