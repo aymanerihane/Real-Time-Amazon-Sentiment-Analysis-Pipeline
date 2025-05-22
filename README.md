@@ -109,4 +109,4 @@ Ce projet met en place une pipeline de traitement de données en temps réel pou
 ## 🧑‍💻 Auteur
 
 **Aymane Rihane**  
-[Portfolio]([https://votre-portfolio.com](https://aymanerihane.github.io/myportfolio/))
+[Portfolio](https://aymanerihane.github.io/myportfolio/)
