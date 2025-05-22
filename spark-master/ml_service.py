@@ -10,7 +10,7 @@ import os
 import json
 import logging
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, to_json, struct, lit, current_timestamp
+from pyspark.sql.functions import col, from_json, to_json, struct, lit, current_timestamp, concat
 from pyspark.sql.types import StructType, StructField, StringType, FloatType, IntegerType, TimestampType
 from pyspark.ml import PipelineModel
 from pymongo import MongoClient
@@ -138,11 +138,20 @@ def process_stream(spark, model):
         from_json(col("value").cast("string"), schema).alias("data")
     ).select("data.*")
     
-    # Filter out records with missing review text
+    # Filter out records with missing review text and fill any nulls with empty strings
     filtered_df = parsed_df.filter(col("reviewText").isNotNull())
     
+    # Fill null values with empty strings to prevent NullPointerException in the Tokenizer
+    filtered_df = filtered_df.na.fill("", ["reviewText", "summary"])
+    
+    # Create 'reviews' column by concatenating reviewText and summary - this is required by the model
+    prepared_df = filtered_df.withColumn("reviews", concat(col("reviewText"), col("summary")))
+    
+    # Ensure the reviews column has no nulls (in case concat creates nulls)
+    prepared_df = prepared_df.na.fill("", ["reviews"])
+    
     # Apply the model to make predictions
-    predictions = model.transform(filtered_df)
+    predictions = model.transform(prepared_df)
     
     # Add sentiment label and prediction timestamp
     sentiment_label_udf = spark.udf.register("sentiment_label_udf", map_sentiment_label, StringType())

@@ -55,7 +55,7 @@ export default function ReviewList({ reviews }) {
         return '';
       }
       
-      return ` (${(confidenceValue * 100).toFixed(0)}%)`;
+      return ``;
     };
   
     return (
