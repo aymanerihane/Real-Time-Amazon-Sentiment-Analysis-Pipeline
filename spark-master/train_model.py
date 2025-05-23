@@ -7,7 +7,6 @@ Train sentiment analysis model on Amazon reviews data
 
 import os
 import sys
-import json
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,10 +14,10 @@ import seaborn as sns
 import re
 import string
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when, udf, count, lit, length, lower, regexp_replace, concat
-from pyspark.sql.types import StringType, IntegerType, FloatType, ArrayType
-from pyspark.ml.feature import Tokenizer, StopWordsRemover, CountVectorizer, IDF, HashingTF, NGram
-from pyspark.ml.classification import LogisticRegression, RandomForestClassifier, NaiveBayes, GBTClassifier
+from pyspark.sql.functions import col, when, udf, length,concat
+from pyspark.sql.types import StringType, IntegerType, FloatType
+from pyspark.ml.feature import Tokenizer, StopWordsRemover, CountVectorizer, IDF
+from pyspark.ml.classification import LogisticRegression, RandomForestClassifier, NaiveBayes
 from pyspark.ml import Pipeline
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
@@ -168,11 +167,11 @@ def create_pipeline():
     # Remove custom stop words
     remover = StopWordsRemover(inputCol="words", outputCol="filtered_words", stopWords=STOP_WORDS)
     
-    # Use TF-IDF for feature extraction (similar to notebook)
+    # Use TF-IDF for feature extraction 
     vectorizer = CountVectorizer(inputCol="filtered_words", outputCol="raw_features", 
                                 maxDF=0.8, minDF=5)
     
-    # Apply IDF like the notebook
+    # Apply IDF 
     idf = IDF(inputCol="raw_features", outputCol="features", minDocFreq=5)
     
     # Logistic Regression with hyperparameters similar to notebook's best model

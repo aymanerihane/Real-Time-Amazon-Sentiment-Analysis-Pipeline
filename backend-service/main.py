@@ -1,7 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 import asyncio
 import json
 from database import Database
@@ -70,18 +70,6 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# Pydantic models for request/response validation
-class ReviewBase(BaseModel):
-    reviewerID: str
-    asin: str
-    reviewer_name: str
-    title: str
-    overall: float
-    reviewText: str
-    date: str
-    helpful_votes: int
-    total_votes: int
-    scrape_time: str
 
 class SentimentAnalysis(BaseModel):
     reviewerID: str
@@ -145,7 +133,7 @@ async def websocket_reviews_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
-# # REST API Endpoints
+# REST API Endpoints
 @app.on_event("startup")
 async def startup_event():
     logger.debug("Starting application...")
@@ -166,16 +154,10 @@ async def shutdown_event():
     print("Closing database connection...")
     await Database.close_db()
 
-@app.get("/")
-async def root():
-    logger.debug("Root endpoint called")
-    return {"message": "Amazon Reviews API is running"}
-
 @app.get("/health")
 async def health_check():
     logger.debug("Health check endpoint called")
     return {"status": "healthy"}
-
 
 # GET THE LIST OF REVIEWS
 @app.get("/api/reviews")

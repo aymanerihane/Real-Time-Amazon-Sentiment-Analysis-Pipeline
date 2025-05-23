@@ -1,12 +1,12 @@
-# 🛒 Real-Time Amazon Sentiment Analysis Pipeline
+# 🎵 Real-Time Amazon Music Album Reviews Analysis Pipeline
 
-Ce projet met en place une pipeline de traitement de données en temps réel pour analyser les sentiments d'avis clients extraits d'Amazon. L'architecture utilise des microservices conteneurisés orchestrés avec Docker Compose.
+Ce projet met en place une pipeline de traitement de données en temps réel pour analyser les sentiments d'avis clients sur les Nouveaux Albums (New Releases) extraits d'Amazon Music. L'architecture utilise des microservices conteneurisés orchestrés avec Docker Compose.
 
 ---
 
 ## 🔧 Fonctionnalités
 
-- 📦 **Scraping Amazon** : collecte d'avis produits
+- 📦 **Scraping Amazon Music** : collecte d'avis sur les Nouveaux Albums
 - 🚀 **Kafka** : transport de données entre microservices (2 brokers avec KRaft)
 - 🔥 **Apache Spark** : 
   - Entraînement du modèle (Spark MLlib)

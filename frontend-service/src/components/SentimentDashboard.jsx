@@ -92,6 +92,7 @@ const SentimentDashboard = () => {
         total: 0
     });
     const [lastUpdated, setLastUpdated] = useState(new Date());
+    const [isExporting, setIsExporting] = useState(false);
 
     // Fetch data from MongoDB
     const fetchData = async (showLoading = true) => {
@@ -142,15 +143,26 @@ const SentimentDashboard = () => {
     // Export data
     const handleExport = async () => {
         try {
-            const blob = await apiService.exportReviews('csv');
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = `sentiment-analysis-${new Date().toISOString().split('T')[0]}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
+            setIsExporting(true);
+            const response = await fetch(`${API_BASE_URL}/reviews/export?format=csv`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'text/csv',
+                },
+            });
+
+            if (!response.ok) throw new Error('Export failed');
+
+            // Create a temporary link element
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(new Blob([await response.text()], { type: 'text/csv' }));
+            link.download = `sentiment-analysis-${new Date().toISOString().split('T')[0]}.csv`;
+            
+            // Trigger download immediately
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
         } catch (err) {
             console.error('Export failed:', err);
             // Fallback: export current data as JSON
@@ -161,6 +173,9 @@ const SentimentDashboard = () => {
             a.href = url;
             a.download = `sentiment-analysis-${new Date().toISOString().split('T')[0]}.json`;
             a.click();
+            window.URL.revokeObjectURL(url);
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -312,9 +327,20 @@ const SentimentDashboard = () => {
                         </select>
                         <button 
                             onClick={handleExport}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-200 flex items-center"
+                            disabled={isExporting}
+                            className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-200 flex items-center ${
+                                isExporting ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
                         >
-                            <Download className="w-4 h-4 mr-2" /> Export
+                            {isExporting ? (
+                                <>
+                                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Exporting...
+                                </>
+                            ) : (
+                                <>
+                                    <Download className="w-4 h-4 mr-2" /> Export
+                                </>
+                            )}
                         </button>
                     </div>
                 </header>
@@ -327,7 +353,7 @@ const SentimentDashboard = () => {
                                 <p className="text-gray-400">Positive</p>
                                 <h3 className="text-3xl font-bold text-green-400">{sentimentStats.positive}</h3>
                                 <p className="text-green-400 text-sm mt-1">
-                                    <ArrowUp className="w-4 h-4 inline mr-1" /> 
+                                    {/* <ArrowUp className="w-4 h-4 inline mr-1" />  */}
                                     {sentimentStats.total > 0 ? Math.round((sentimentStats.positive / sentimentStats.total) * 100) : 0}%
                                 </p>
                             </div>
@@ -343,7 +369,7 @@ const SentimentDashboard = () => {
                                 <p className="text-gray-400">Negative</p>
                                 <h3 className="text-3xl font-bold text-red-400">{sentimentStats.negative}</h3>
                                 <p className="text-red-400 text-sm mt-1">
-                                    <ArrowDown className="w-4 h-4 inline mr-1" /> 
+                                    {/* <ArrowDown className="w-4 h-4 inline mr-1" />  */}
                                     {sentimentStats.total > 0 ? Math.round((sentimentStats.negative / sentimentStats.total) * 100) : 0}%
                                 </p>
                             </div>
@@ -359,7 +385,7 @@ const SentimentDashboard = () => {
                                 <p className="text-gray-400">Neutral</p>
                                 <h3 className="text-3xl font-bold text-blue-400">{sentimentStats.neutral}</h3>
                                 <p className="text-blue-400 text-sm mt-1">
-                                    <ArrowUp className="w-4 h-4 inline mr-1" /> 
+                                    {/* <ArrowUp className="w-4 h-4 inline mr-1" />  */}
                                     {sentimentStats.total > 0 ? Math.round((sentimentStats.neutral / sentimentStats.total) * 100) : 0}%
                                 </p>
                             </div>

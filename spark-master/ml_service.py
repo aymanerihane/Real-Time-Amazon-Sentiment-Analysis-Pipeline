@@ -66,20 +66,20 @@ def define_schema():
         StructField("reviewTime", StringType())
     ])
 
-def define_output_schema():
-    """Define the schema for the output JSON data"""
-    return StructType([
-        StructField("reviewerID", StringType()),
-        StructField("asin", StringType()),
-        StructField("reviewerName", StringType()),
-        StructField("reviewText", StringType()),
-        StructField("overall", FloatType()),
-        StructField("summary", StringType()),
-        StructField("reviewTime", StringType()),
-        StructField("sentiment", IntegerType()),
-        StructField("sentiment_label", StringType()),
-        StructField("prediction_time", TimestampType())
-    ])
+# def define_output_schema():
+#     """Define the schema for the output JSON data"""
+#     return StructType([
+#         StructField("reviewerID", StringType()),
+#         StructField("asin", StringType()),
+#         StructField("reviewerName", StringType()),
+#         StructField("reviewText", StringType()),
+#         StructField("overall", FloatType()),
+#         StructField("summary", StringType()),
+#         StructField("reviewTime", StringType()),
+#         StructField("sentiment", IntegerType()),
+#         StructField("sentiment_label", StringType()),
+#         StructField("prediction_time", TimestampType())
+#     ])
 
 def map_sentiment_label(sentiment):
     """Map numeric sentiment to text label"""
